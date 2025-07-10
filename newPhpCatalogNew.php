@@ -3,7 +3,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Включаем расширенное логирование
+// 3) Включаем расширенное логирование
 ini_set('error_log', $_SERVER['DOCUMENT_ROOT'].'/upload/owen_import_log.txt');
 ini_set('log_errors', 1);
 
@@ -12,18 +12,22 @@ ini_set('max_execution_time', 0);
 set_time_limit(0);
 ini_set('memory_limit', '1024M'); 
 
+
 ini_set('max_input_time', 0);       
 ini_set('default_socket_timeout', 600); 
 ini_set('post_max_size', '64M');    
 ini_set('upload_max_filesize', '64M');
 ini_set('output_buffering', 'Off'); 
 
+
 if (function_exists('apache_setenv')) {
     apache_setenv('no-gzip', 1);
     apache_setenv('dont-vary', 1);
 }
 
+
 ignore_user_abort(true);
+
 
 $_SERVER["DOCUMENT_ROOT"] = __DIR__;
 $DOCUMENT_ROOT = $_SERVER["DOCUMENT_ROOT"];
@@ -33,15 +37,19 @@ define('NOT_CHECK_PERMISSIONS', true);
 require_once($_SERVER["DOCUMENT_ROOT"].'/bitrix/modules/main/include/prolog_before.php');
 require_once($_SERVER["DOCUMENT_ROOT"].'/bitrix/modules/iblock/prolog.php');
 
+
 if(!CModule::IncludeModule('iblock')) {
     trigger_error('Модуль iblock не подключен', E_USER_ERROR);
 }
+
 
 $iblockId = 16;
 $xmlPath  = $_SERVER["DOCUMENT_ROOT"]."/catalogOven.xml";
 if(!file_exists($xmlPath)) {
     die("XML-файл не найден по пути $xmlPath");
 }
+
+
 
 $xml = simplexml_load_file($xmlPath);
 if(!$xml) {
@@ -54,6 +62,7 @@ function importSections($nodes, $parentId = 0) {
     foreach($nodes as $node) {
         $code = (string)$node->id;
         $name = (string)$node->name;
+
         
         $db = CIBlockSection::GetList(
             [], 
@@ -78,6 +87,7 @@ function importSections($nodes, $parentId = 0) {
                 continue;
             }
         }
+
         
         if(isset($node->items->item)) {
             importSections($node->items->item, $sectionId);
@@ -87,20 +97,24 @@ function importSections($nodes, $parentId = 0) {
 
 use Bitrix\Main\Web\HttpClient;
 
+
 $docDir = $_SERVER['DOCUMENT_ROOT'].'/upload/doc/';
 if (!is_dir($docDir)) {
     mkdir($docDir, 0755, true);
 }
 
-// Стандартная функция загрузки файлов/
 function downloadFile($url, $description = '') {
     global $docDir;
+    
     
     $fileName = basename($url);
     $localPath = $docDir . $fileName;
     
+    
     if (file_exists($localPath)) {
+        
         error_log("Файл уже существует: {$fileName}, используем локальную копию");
+        
         
         $fileArray = CFile::MakeFileArray($localPath);
         $fileArray['MODULE_ID'] = 'iblock';
@@ -114,6 +128,7 @@ function downloadFile($url, $description = '') {
         return $fileArray;
     }
     
+    
     $http = new HttpClient([
         'socketTimeout' => 600,    
         'streamTimeout' => 1800,   
@@ -123,36 +138,113 @@ function downloadFile($url, $description = '') {
         'waitResponse' => true    
     ]);
     
+    
     try {
         $success = $http->download($url, $localPath);
         if ($success) {
+            
             $fileArray = CFile::MakeFileArray($localPath);
             $fileArray['MODULE_ID'] = 'iblock';
             
+            
+            
             if (!empty($description)) {
-                $fileArray['description'] = $description;
+                $fileArray['description'] = $description; 
             } else {
-                $fileArray['description'] = $fileName;
+                $fileArray['description'] = $fileName; 
             }
             
             return $fileArray;
         } else {
-            trigger_error("Не удалось скачать файл: {$url}, ошибка: " . $http->getError(), E_USER_WARNING);
+            $errorMessage = "Не удалось скачать файл: {$url}, ошибка: " . $http->getError();
+            trigger_error($errorMessage, E_USER_WARNING);
+            error_log($errorMessage);
             return false;
         }
     } catch (\Exception $e) {
-        trigger_error("Исключение при загрузке файла {$url}: " . $e->getMessage(), E_USER_WARNING);
+        $errorMessage = "Исключение при загрузке файла {$url}: " . $e->getMessage();
+        trigger_error($errorMessage, E_USER_WARNING);
+        error_log($errorMessage);
         return false;
     }
 }
 
+/*
+ * Функция загружает дополнительные фото товара и возвращает массив для свойства
+ * MORE_PHOTO. Это код из варианта скрипта с загрузкой фото.
+ */
+/*
+function uploadAdditionalPhotos($product) {
+    $morePhoto = [];
+    if (isset($product->images->image)) {
+        foreach ($product->images->image as $imgNode) {
+            $url = (string)$imgNode->src;
+            if ($url) {
+                $f = \CFile::MakeFileArray($url);
+                $f["MODULE_ID"] = "iblock";
+                $morePhoto[] = $f;
+            }
+        }
+    }
+    return $morePhoto;
+}
+*/
+
+/*
+ * Функция обрабатывает документы и сертификаты товара. Взята из версии
+ * скрипта, где реализована загрузка файлов.
+ */
+/*
+function collectProductDocs($product) {
+    $docsArray = [];
+    $certsArray = [];
+    if(isset($product->docs)) {
+        foreach($product->docs->doc as $docGroup) {
+            $groupName = (string)$docGroup->name;
+            if(isset($docGroup->items)) {
+                foreach($docGroup->items->item as $docItem) {
+                    $docName = (string)$docItem->name;
+                    $docLink = (string)$docItem->link;
+                    $fileArray = downloadFile($docLink, $docName);
+                    if ($fileArray) {
+                        if(mb_strtolower($groupName) === 'документация') {
+                            $docsArray[] = $fileArray;
+                        } elseif(mb_strtolower($groupName) === 'сертификаты') {
+                            $certsArray[] = $fileArray;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return [$docsArray, $certsArray];
+}
+*/
+
 function importProducts() {
-    global $xml, $iblockId;
+    
+    ini_set('default_socket_timeout', 0); 
+    
+    global $xml, $iblockId, $docDir;
     $el = new CIBlockElement;
+    
+   
+    $processedCount = 0;
+    $totalProducts = 0;
+    
+    
+    foreach($xml->categories->category as $cat) {
+        foreach($cat->items->item as $sub) {
+            foreach($sub->products->product as $p) {
+                $totalProducts++;
+            }
+        }
+    }
+    
 
     foreach($xml->categories->category as $cat) {
         foreach($cat->items->item as $sub) {
-            // Находим ID секции
+            // 1) Находим ID секции
             $sectionCode = (string)$sub->id;
             $dbS = CIBlockSection::GetList(
                 [], 
@@ -165,103 +257,125 @@ function importProducts() {
             }
             $sectionId = $sec["ID"];
 
-            // Пробегаем товары
+            
             foreach($sub->products->product as $p) {
                 $xmlId      = (string)$p->id;
                 $name       = (string)$p->name;
-                $previewText= (string)$p->desc;
-                $detailText = (string)$p->desc;   
-                $imgUrl     = (string)$p->image;
+                $detailText = (string)$p->desc;  
+                $specificText = trim((string)$p->specs); 
                 
-                $fileArray = [];
-                if ($imgUrl) {
-                    $fileArray = \CFile::MakeFileArray($imgUrl);
-                    if ($fileArray) {
-                        $fileArray["MODULE_ID"] = "iblock";
-                    }
+                // Вывод отладочной информации о тегах specs
+                if ($specificText !== '') {
+                } else {
                 }
                 
-                // Основные свойства
+                $imgUrl     = (string)$p->image;
+
+                
+                $fileArray = \CFile::MakeFileArray($imgUrl);
+                $fileArray["MODULE_ID"] = "iblock";
+
+                $propertyValues = [];
+
+                // 4.1) Технические характеристики (HTML-свойство)
+                if ($specificText !== '') {
+                    // Проверяем, содержит ли текст HTML-теги
+                    if (strip_tags($specificText) !== $specificText) {
+                        // Если содержит HTML-теги, сохраняем как HTML
+                        $propertyValues['SPECIFICATIONS_TEXT'] = [
+                            'VALUE' => [
+                                'TEXT' => $specificText,
+                                'TYPE' => 'HTML',
+                            ],
+                        ];
+                    } else {
+                        // Если это просто текст, то оборачиваем его в параграфы для форматирования
+                        $formattedText = '<p>' . str_replace("\n", '</p><p>', $specificText) . '</p>';
+                        $formattedText = str_replace('<p></p>', '', $formattedText);
+                        
+                        $propertyValues['SPECIFICATIONS_TEXT'] = [
+                            'VALUE' => [
+                                'TEXT' => $formattedText,
+                                'TYPE' => 'HTML',
+                            ],
+                        ];
+                    }
+                }
+
+                
                 $arProps = [];
-                if (isset($p->props)) {
-                    // Характеристики товара
-                    $specification = [];
-                    foreach ($p->props->children() as $propName => $propVal) {
-                        $propValue = (string)$propVal;
-                        if (!empty($propValue)) {
-                            $specification[] = [
-                                "NAME" => (string)$propName,
-                                "VALUE" => $propValue
-                            ];
-                        }
+                
+                
+                /* обработка документов
+                if(isset($p->docs)) {
+                    
+                    $docsCount = count($p->docs->children());
+                    $docsArray = [];
+                    $certsArray = [];
+                    
+                    foreach($p->docs->children() as $childName => $child) {
                     }
                     
-                    if (!empty($specification)) {
-                        $arProps["SPECIFICATIONS_TEXT"] = $specification;
-                    }
-                }
-                
-                /* 
-                // ЗАКОММЕНТИРОВАННЫЙ КОД ДЛЯ ЗАГРУЗКИ ФОТО
-                // Загрузка дополнительных фотографий
-                $morePhoto = [];
-                if (isset($p->images->image)) {
-                    foreach ($p->images->image as $imgNode) {
-                        $url = (string)$imgNode->src;
-                        if ($url) {
-                            $f = \CFile::MakeFileArray($url);
-                            $f["MODULE_ID"] = "iblock";
-                            $morePhoto[] = $f;
-                        }
-                    }
-                }
-                if (!empty($morePhoto)) {
-                    $arProps["MORE_PHOTO"] = $morePhoto;
-                }
-                */
+ 
+                    foreach($p->docs->doc as $docGroup) {
+                        $groupName = (string)$docGroup->name;
+                        
 
-                /*
-                // ЗАКОММЕНТИРОВАННЫЙ КОД ДЛЯ ЗАГРУЗКИ ДОКУМЕНТОВ
-                // Загрузка документов
-                if (isset($p->docs->doc)) {
-                    $docFiles = [];
-                    foreach ($p->docs->doc as $doc) {
-                        $docUrl = (string)$doc->url;
-                        $docDescription = (string)$doc->name;
-                        
-                        if ($docUrl) {
-                            $docFile = downloadFile($docUrl, $docDescription);
-                            if ($docFile) {
-                                $docFiles[] = $docFile;
+                        if(isset($docGroup->items)) {
+                            $itemsCount = count($docGroup->items->children());
+                            foreach($docGroup->items->item as $docItem) {
+                                $docName = (string)$docItem->name;
+                                $docLink = (string)$docItem->link;
+                                
+                                
+                                $fileArray = downloadFile($docLink, $docName);
+                                
+                                
+                                if ($fileArray) {
+                                
+                                    
+                                    if(mb_strtolower($groupName) === 'документация') {
+                                        $docsArray[] = $fileArray;
+                                    } elseif(mb_strtolower($groupName) === 'сертификаты') {
+                                        $certsArray[] = $fileArray;
+                                    }
+                                    
+                                }
                             }
                         }
                     }
-                    if (!empty($docFiles)) {
-                        $arProps["DOCS"] = $docFiles;
-                    }
-                }
-                
-                // Загрузка сертификатов
-                if (isset($p->certificates->cert)) {
-                    $certFiles = [];
-                    foreach ($p->certificates->cert as $cert) {
-                        $certUrl = (string)$cert->url;
-                        $certDescription = (string)$cert->name;
                         
-                        if ($certUrl) {
-                            $certFile = downloadFile($certUrl, $certDescription);
-                            if ($certFile) {
-                                $certFiles[] = $certFile;
-                            }
-                        }
+                    
+                    if(!empty($docsArray)) {
+                        $arProps['DOCS'] = $docsArray;
+                    } else {
                     }
-                    if (!empty($certFiles)) {
-                        $arProps["CERTIFICATE"] = $certFiles;
+                    
+                    if(!empty($certsArray)) {
+                        $arProps['CERTIFICATE'] = $certsArray;
+                    } else {
                     }
                 }
                 */
 
-                // Массив для загрузки/обновления товара
+                // Добавляем свойства из $propertyValues в $arProps
+                if (!empty($propertyValues)) {
+                    $arProps = array_merge($arProps, $propertyValues);
+                }
+
+                // Делаем финальную проверку данных перед подготовкой $arLoad
+                // Явно проверяем наличие характеристик в свойствах
+                if (isset($arProps['SPECIFICATIONS_TEXT'])) {
+                } 
+                
+                // Ещё одна проверка для уверенности - добавляем характеристики напрямую в $arLoad
+                $propertyValuesForLoad = $arProps;
+                
+                // Добавляем SPECIFICATIONS_TEXT напрямую, если он не был добавлен ранее
+                if (!empty($propertyValues['SPECIFICATIONS_TEXT']) && !isset($propertyValuesForLoad['SPECIFICATIONS_TEXT'])) {
+                    $propertyValuesForLoad['SPECIFICATIONS_TEXT'] = $propertyValues['SPECIFICATIONS_TEXT'];
+                }
+                
                 $arLoad = [
                     "IBLOCK_ID"         => $iblockId,
                     "XML_ID"            => $xmlId,
@@ -269,17 +383,12 @@ function importProducts() {
                     "CODE"              => $xmlId,
                     "ACTIVE"            => "Y",
                     "IBLOCK_SECTION_ID" => $sectionId,
-                    "PREVIEW_TEXT"      => $previewText,
                     "DETAIL_TEXT"       => $detailText,
+                    "PREVIEW_PICTURE"   => $fileArray,
+                    "DETAIL_PICTURE"    => $fileArray,
+                    "PROPERTY_VALUES"   => $propertyValuesForLoad, 
                 ];
-                
-                // Добавляем изображения только если они есть
-                if (!empty($fileArray)) {
-                    $arLoad["PREVIEW_PICTURE"] = $fileArray;
-                    $arLoad["DETAIL_PICTURE"] = $fileArray;
-                }
-                
-                // Проверяем существование элемента
+
                 $resE = CIBlockElement::GetList(
                     [], 
                     ["IBLOCK_ID" => $iblockId, "XML_ID" => $xmlId], 
@@ -289,9 +398,8 @@ function importProducts() {
                 )->Fetch();
 
                 if($resE) {
-                    // Обновление существующего элемента
                     $current = CIBlockElement::GetByID($resE["ID"])->GetNext();
-                    if ($current && $current["DETAIL_PICTURE"] && !empty($imgUrl)) {
+                    if ($current && $current["DETAIL_PICTURE"]) {
                         $existingFile = CFile::GetByID($current["DETAIL_PICTURE"])->Fetch();
                         
                         if ($existingFile["ORIGINAL_NAME"] === basename($imgUrl)) {
@@ -299,10 +407,6 @@ function importProducts() {
                         }
                     }
                     
-                    // Если у нас есть свойства, добавляем их
-                    if(!empty($arProps)) {
-                        $arLoad["PROPERTY_VALUES"] = $arProps;
-                    }
                    
                     if(!$el->Update($resE["ID"], $arLoad)) {
                         trigger_error(
@@ -310,16 +414,44 @@ function importProducts() {
                             E_USER_WARNING
                         );
                     } else {
+                        
                         if(!empty($arProps)) {
+                            
                             CIBlockElement::SetPropertyValuesEx($resE["ID"], $iblockId, $arProps);
+                            
+                            
+                            
+                           
+                            $dbProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "DOCS"]);
+                            while($prop = $dbProps->Fetch()) {
+                             
+                                if($prop["VALUE"]) {
+                                    $fileInfo = CFile::GetByID($prop["VALUE"])->Fetch();
+                                } else {
+                                }
+                            }
+                            
+                            
+                            $dbProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "CERTIFICATE"]);
+                            while($prop = $dbProps->Fetch()) {
+                                
+                                if($prop["VALUE"]) {
+                                    $fileInfo = CFile::GetByID($prop["VALUE"])->Fetch();
+                                } else {
+                                }
+                            }
+                            
+                            // Проверяем сохранение свойства SPECIFICATIONS_TEXT
+                            $dbSpecsProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "SPECIFICATIONS_TEXT"]);
+                            while($specProp = $dbSpecsProps->Fetch()) {
+                                if (is_array($specProp["VALUE"])) {
+                                } else {
+                                }
+                            }
                         }
                     }
                 } else {
-                    // Добавление нового элемента
-                    if(!empty($arProps)) {
-                        $arLoad["PROPERTY_VALUES"] = $arProps;
-                    }
-                    
+                   
                     $newElementId = $el->Add($arLoad);
                     if(!$newElementId) {
                         trigger_error(
@@ -327,8 +459,20 @@ function importProducts() {
                             E_USER_WARNING
                         );
                     } else {
+                        
+                        // Если у нас есть свойства, устанавливаем их и для новых элементов
                         if (!empty($arProps)) {
+                            
+                            // Устанавливаем свойства для нового элемента
                             CIBlockElement::SetPropertyValuesEx($newElementId, $iblockId, $arProps);
+                            
+                            // Проверяем сохранение свойства SPECIFICATIONS_TEXT для нового элемента
+                            $dbSpecsProps = CIBlockElement::GetProperty($iblockId, $newElementId, [], ["CODE" => "SPECIFICATIONS_TEXT"]);
+                            while($specProp = $dbSpecsProps->Fetch()) {
+                                if (is_array($specProp["VALUE"])) {
+                                } else {
+                                }
+                            }
                         }
                     }
                 }
@@ -337,7 +481,8 @@ function importProducts() {
     }
 }
 
-// Запускаем
+
+// 4. Запускаем
 importSections($xml->categories->category);
 importProducts();
 

@@ -49,7 +49,6 @@ if(!file_exists($xmlPath)) {
     die("XML-файл не найден по пути $xmlPath");
 }
 
-var_dump(ini_get('allow_url_fopen'));
 
 
 $xml = simplexml_load_file($xmlPath);
@@ -190,7 +189,6 @@ function importProducts() {
         }
     }
     
-    echo "<p>Всего товаров для обработки: {$totalProducts}</p>";
 
     foreach($xml->categories->category as $cat) {
         foreach($cat->items->item as $sub) {
@@ -215,11 +213,8 @@ function importProducts() {
                 $specificText = trim((string)$p->specs); 
                 
                 // Вывод отладочной информации о тегах specs
-                echo "<br>Значение тега specs для товара '{$name}': ";
                 if ($specificText !== '') {
-                    echo "<pre>" . htmlspecialchars($specificText) . "</pre>";
                 } else {
-                    echo "<i>пусто</i><br>";
                 }
                 
                 $imgUrl     = (string)$p->image;
@@ -241,7 +236,6 @@ function importProducts() {
                                 'TYPE' => 'HTML',
                             ],
                         ];
-                        echo "<div style='color:green'>Обнаружены HTML-теги, сохраняем как HTML</div>";
                     } else {
                         // Если это просто текст, то оборачиваем его в параграфы для форматирования
                         $formattedText = '<p>' . str_replace("\n", '</p><p>', $specificText) . '</p>';
@@ -253,43 +247,35 @@ function importProducts() {
                                 'TYPE' => 'HTML',
                             ],
                         ];
-                        echo "<div style='color:blue'>Простой текст преобразован в HTML с параграфами</div>";
                     }
                 }
 
                 
                 $arProps = [];
                 
-                echo "<hr>Проверка документов для товара: {$name}<br>";
                 
                 /* обработка документов
                 if(isset($p->docs)) {
-                    echo "Секция docs существует.<br>";
                     
                     $docsCount = count($p->docs->children());
-                    echo "Количество дочерних элементов в docs: {$docsCount}<br>";
                     $docsArray = [];
                     $certsArray = [];
                     
                     foreach($p->docs->children() as $childName => $child) {
-                        echo "Найден дочерний элемент: {$childName}<br>";
                     }
                     
  
                     foreach($p->docs->doc as $docGroup) {
-                        echo "Обработка группы документов: " . (string)$docGroup->name . "<br>";
                         $groupName = (string)$docGroup->name;
                         
 
                         if(isset($docGroup->items)) {
                             $itemsCount = count($docGroup->items->children());
-                            echo "Количество элементов items: {$itemsCount}<br>";
                             foreach($docGroup->items->item as $docItem) {
                                 $docName = (string)$docItem->name;
                                 $docLink = (string)$docItem->link;
                                 
                                 
-                                echo "Загрузка файла: {$docLink}, название: {$docName}<br>";
                                 $fileArray = downloadFile($docLink, $docName);
                                 
                                 
@@ -310,22 +296,12 @@ function importProducts() {
                     
                     if(!empty($docsArray)) {
                         $arProps['DOCS'] = $docsArray;
-                        echo "Добавлено " . count($docsArray) . " документов в свойство DOCS<br>";
-                        echo "<pre>";
-                        print_r($docsArray);
-                        echo "</pre>";
                     } else {
-                        echo "Массив документов пуст<br>";
                     }
                     
                     if(!empty($certsArray)) {
                         $arProps['CERTIFICATE'] = $certsArray;
-                        echo "Добавлено " . count($certsArray) . " сертификатов в свойство CERTIFICATE<br>";
-                        echo "<pre>";
-                        print_r($certsArray);
-                        echo "</pre>";
                     } else {
-                        echo "Массив сертификатов пуст<br>";
                     }
                 }
                 */
@@ -333,16 +309,11 @@ function importProducts() {
                 // Добавляем свойства из $propertyValues в $arProps
                 if (!empty($propertyValues)) {
                     $arProps = array_merge($arProps, $propertyValues);
-                    echo "<pre>Добавлены характеристики из тега specs:</pre>";
-                    echo "<pre>";
-                    print_r($propertyValues);
-                    echo "</pre>";
                 }
 
                 // Делаем финальную проверку данных перед подготовкой $arLoad
                 // Явно проверяем наличие характеристик в свойствах
                 if (isset($arProps['SPECIFICATIONS_TEXT'])) {
-                    echo "<div style='color:green; font-weight:bold;'>Характеристики уже добавлены в свойства</div>";
                 } 
                 
                 // Ещё одна проверка для уверенности - добавляем характеристики напрямую в $arLoad
@@ -351,7 +322,6 @@ function importProducts() {
                 // Добавляем SPECIFICATIONS_TEXT напрямую, если он не был добавлен ранее
                 if (!empty($propertyValues['SPECIFICATIONS_TEXT']) && !isset($propertyValuesForLoad['SPECIFICATIONS_TEXT'])) {
                     $propertyValuesForLoad['SPECIFICATIONS_TEXT'] = $propertyValues['SPECIFICATIONS_TEXT'];
-                    echo "<div style='color:purple; font-weight:bold;'>Характеристики добавлены напрямую в arLoad</div>";
                 }
                 
                 $arLoad = [
@@ -394,57 +364,37 @@ function importProducts() {
                     } else {
                         
                         if(!empty($arProps)) {
-                            echo "<div style='padding: 10px; background: #f0f8ff; margin: 10px 0; border-left: 5px solid #4682b4;'>";
-                            echo "Устанавливаем свойства для элемента ID: {$resE["ID"]}<br>";
-                            echo "<pre style='background: #f8f8f8; padding: 5px; border: 1px solid #ddd;'>Свойства: ";
-                            print_r($arProps);
-                            echo "</pre>";
-                            echo "</div>";
                             
                             CIBlockElement::SetPropertyValuesEx($resE["ID"], $iblockId, $arProps);
                             
                             
-                            echo "Проверка сохранения свойств:<br>";
                             
                            
                             $dbProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "DOCS"]);
-                            echo "Свойство DOCS:<br>";
                             while($prop = $dbProps->Fetch()) {
                              
                                 if($prop["VALUE"]) {
                                     $fileInfo = CFile::GetByID($prop["VALUE"])->Fetch();
-                                    echo "ID: {$prop["ID"]}, VALUE: {$prop["VALUE"]}, DESCRIPTION: {$prop["DESCRIPTION"]}, FILE DESCRIPTION: {$fileInfo["DESCRIPTION"]}<br>";
                                 } else {
-                                    echo "ID: {$prop["ID"]}, VALUE: {$prop["VALUE"]}, DESCRIPTION: {$prop["DESCRIPTION"]}<br>";
                                 }
                             }
                             
                             
                             $dbProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "CERTIFICATE"]);
-                            echo "Свойство CERTIFICATE:<br>";
                             while($prop = $dbProps->Fetch()) {
                                 
                                 if($prop["VALUE"]) {
                                     $fileInfo = CFile::GetByID($prop["VALUE"])->Fetch();
-                                    echo "ID: {$prop["ID"]}, VALUE: {$prop["VALUE"]}, DESCRIPTION: {$prop["DESCRIPTION"]}, FILE DESCRIPTION: {$fileInfo["DESCRIPTION"]}<br>";
                                 } else {
-                                    echo "ID: {$prop["ID"]}, VALUE: {$prop["VALUE"]}, DESCRIPTION: {$prop["DESCRIPTION"]}<br>";
                                 }
                             }
                             
                             // Проверяем сохранение свойства SPECIFICATIONS_TEXT
                             $dbSpecsProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "SPECIFICATIONS_TEXT"]);
-                            echo "<h3>Свойство SPECIFICATIONS_TEXT:</h3>";
                             while($specProp = $dbSpecsProps->Fetch()) {
-                                echo "ID: {$specProp["ID"]}, VALUE: ";
                                 if (is_array($specProp["VALUE"])) {
-                                    echo "<pre>";
-                                    print_r($specProp["VALUE"]);
-                                    echo "</pre>";
                                 } else {
-                                    echo $specProp["VALUE"] ? htmlspecialchars($specProp["VALUE"]) : '<i>пусто</i>';
                                 }
-                                echo "<br>";
                             }
                         }
                     }
@@ -457,34 +407,21 @@ function importProducts() {
                             E_USER_WARNING
                         );
                     } else {
-                        echo "<div style='padding: 10px; background: #f0fff0; margin: 10px 0; border-left: 5px solid #2e8b57;'>";
-                        echo "Товар успешно добавлен с ID: {$newElementId}<br>";
                         
                         // Если у нас есть свойства, устанавливаем их и для новых элементов
                         if (!empty($arProps)) {
-                            echo "<pre style='background: #f8f8f8; padding: 5px; border: 1px solid #ddd;'>Свойства для нового товара: ";
-                            print_r($arProps);
-                            echo "</pre>";
                             
                             // Устанавливаем свойства для нового элемента
                             CIBlockElement::SetPropertyValuesEx($newElementId, $iblockId, $arProps);
                             
                             // Проверяем сохранение свойства SPECIFICATIONS_TEXT для нового элемента
                             $dbSpecsProps = CIBlockElement::GetProperty($iblockId, $newElementId, [], ["CODE" => "SPECIFICATIONS_TEXT"]);
-                            echo "<h3>Свойство SPECIFICATIONS_TEXT для нового элемента:</h3>";
                             while($specProp = $dbSpecsProps->Fetch()) {
-                                echo "ID: {$specProp["ID"]}, VALUE: ";
                                 if (is_array($specProp["VALUE"])) {
-                                    echo "<pre>";
-                                    print_r($specProp["VALUE"]);
-                                    echo "</pre>";
                                 } else {
-                                    echo $specProp["VALUE"] ? htmlspecialchars($specProp["VALUE"]) : '<i>пусто</i>';
                                 }
-                                echo "<br>";
                             }
                         }
-                        echo "</div>";
                     }
                 }
             }

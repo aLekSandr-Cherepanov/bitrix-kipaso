@@ -847,7 +847,7 @@ if (!empty($arResult["EDIT_LINK"])) {
                 <? endif; ?>
 
 
-
+                 <!-- был добавлен блок который выводит характеристики из api xml овен, -->   
                 <div class="changePropertiesNoGroup" id="elementProperties">
                             <? $APPLICATION->IncludeComponent(
                                 "dresscode:catalog.properties.list",

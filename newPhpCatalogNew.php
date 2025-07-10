@@ -169,6 +169,58 @@ function downloadFile($url, $description = '') {
     }
 }
 
+/*
+ * Функция загружает дополнительные фото товара и возвращает массив для свойства
+ * MORE_PHOTO. Это код из варианта скрипта с загрузкой фото.
+ */
+/*
+function uploadAdditionalPhotos($product) {
+    $morePhoto = [];
+    if (isset($product->images->image)) {
+        foreach ($product->images->image as $imgNode) {
+            $url = (string)$imgNode->src;
+            if ($url) {
+                $f = \CFile::MakeFileArray($url);
+                $f["MODULE_ID"] = "iblock";
+                $morePhoto[] = $f;
+            }
+        }
+    }
+    return $morePhoto;
+}
+*/
+
+/*
+ * Функция обрабатывает документы и сертификаты товара. Взята из версии
+ * скрипта, где реализована загрузка файлов.
+ */
+/*
+function collectProductDocs($product) {
+    $docsArray = [];
+    $certsArray = [];
+    if(isset($product->docs)) {
+        foreach($product->docs->doc as $docGroup) {
+            $groupName = (string)$docGroup->name;
+            if(isset($docGroup->items)) {
+                foreach($docGroup->items->item as $docItem) {
+                    $docName = (string)$docItem->name;
+                    $docLink = (string)$docItem->link;
+                    $fileArray = downloadFile($docLink, $docName);
+                    if ($fileArray) {
+                        if(mb_strtolower($groupName) === 'документация') {
+                            $docsArray[] = $fileArray;
+                        } elseif(mb_strtolower($groupName) === 'сертификаты') {
+                            $certsArray[] = $fileArray;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return [$docsArray, $certsArray];
+}
+*/
+
 function importProducts() {
     
     ini_set('default_socket_timeout', 0); 

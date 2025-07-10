@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анализ блока модификаций</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        #result {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Анализ блока модификаций продукта КосМастер</h1>
+    <p>Эта страница поможет проанализировать структуру блока модификаций с сайта OWEN-RUSSIA.</p>
+    
+    <button id="fetchBtn">Получить данные</button>
+    <div class="loader" id="loader"></div>
+    
+    <h2>Результаты анализа:</h2>
+    <div id="result">Нажмите на кнопку "Получить данные" для начала анализа</div>
+    
+    <script>
+        document.getElementById('fetchBtn').addEventListener('click', async () => {
+            const loader = document.getElementById('loader');
+            const result = document.getElementById('result');
+            
+            loader.style.display = 'block';
+            result.textContent = 'Загрузка данных...';
+            
+            try {
+                // Из-за ограничений CORS мы не можем напрямую получить HTML страницы
+                // В реальном сценарии вам потребуется серверный прокси или использовать API сайта
+                
+                // Имитация анализа данных для демонстрации
+                const analysisResult = {
+                    product_info: {
+                        name: "КосМастер",
+                        base_template: "КосМастер-Х.Х"
+                    },
+                    modification_structure: {
+                        html: '<div class="typer__template"><span class="typer-template-item"><span class="typer-template-item__text js-typer-template-item-text">КосМастер</span></span><span class="typer-template-item"><span class="typer-template-item__text js-typer-template-item-text">–</span></span><span class="typer-template-item typer-template-item_type_mod js-typer-template-item" data-id="2778"><span class="typer-template-item__mod js-typer-template-item-mod"></span><span class="typer-template-item__text">Х</span></span><span class="typer-template-item"><span class="typer-template-item__text js-typer-template-item-text">.</span></span><span class="typer-template-item typer-template-item_type_mod js-typer-template-item" data-id="2780"><span class="typer-template-item__mod js-typer-template-item-mod"></span><span class="typer-template-item__text">Х</span></span></div>',
+                        items: [
+                            {
+                                position: 1,
+                                id: "2778",
+                                current_value: "2",
+                                possible_values: ["1", "2", "3"]
+                            },
+                            {
+                                position: 2,
+                                id: "2780",
+                                current_value: "3",
+                                possible_values: ["0", "1", "2", "3"]
+                            }
+                        ]
+                    },
+                    likely_data_source: {
+                        type: "JavaScript объект",
+                        description: "Данные о модификациях, скорее всего, хранятся в JavaScript-объекте на странице, который инициализирует компонент выбора модификации",
+                        suggested_implementation: "Для точного определения всех возможных вариантов модификаций вам потребуется просмотреть JavaScript код страницы, найти инициализацию компонента typer__template и извлечь массивы данных"
+                    },
+                    recommended_approach: [
+                        "1. Использовать инструменты разработчика браузера для анализа JavaScript кода страницы",
+                        "2. Найти JavaScript объекты, содержащие данные о модификациях",
+                        "3. Проверить сетевые запросы (Network tab) для выявления возможных API запросов, получающих данные о модификациях",
+                        "4. Создать JSON-структуру на основе полученных данных"
+                    ]
+                };
+                
+                // Демонстрационная задержка для имитации загрузки
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Отображаем результаты
+                result.textContent = JSON.stringify(analysisResult, null, 2);
+                
+                // Создаем кнопку для сохранения JSON-файла
+                const saveBtn = document.createElement('button');
+                saveBtn.textContent = 'Сохранить результаты в JSON';
+                saveBtn.style.marginTop = '15px';
+                saveBtn.addEventListener('click', () => {
+                    const dataStr = JSON.stringify(analysisResult, null, 2);
+                    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                    
+                    const exportFileDefaultName = 'kosmaster_modifications.json';
+                    
+                    const linkElement = document.createElement('a');
+                    linkElement.setAttribute('href', dataUri);
+                    linkElement.setAttribute('download', exportFileDefaultName);
+                    linkElement.click();
+                });
+                
+                result.after(saveBtn);
+            } catch (error) {
+                result.textContent = `Произошла ошибка: ${error.message}`;
+            } finally {
+                loader.style.display = 'none';
+            }
+        });
+    </script>
+    
+    <div style="margin-top: 30px;">
+        <h2>Инструкции по анализу блока модификаций:</h2>
+        <ol>
+            <li>Откройте страницу продукта (https://owen-russia.ru/product/kosmaster/) в браузере Chrome или Firefox</li>
+            <li>Нажмите F12 или Ctrl+Shift+I для открытия инструментов разработчика</li>
+            <li>Перейдите на вкладку "Elements" (Chrome) или "Inspector" (Firefox)</li>
+            <li>Найдите элемент с классом "typer__template" (используйте Ctrl+F и введите "typer__template")</li>
+            <li>Исследуйте структуру этого элемента</li>
+            <li>Перейдите на вкладку "Network" и обновите страницу (F5)</li>
+            <li>Ищите запросы, которые могут содержать данные о модификациях (XHR или Fetch запросы)</li>
+            <li>Перейдите на вкладку "Sources" (Chrome) или "Debugger" (Firefox) и исследуйте JavaScript файлы на наличие данных о модификациях</li>
+        </ol>
+    </div>
+</body>
+</html>

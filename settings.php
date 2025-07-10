@@ -1,0 +1,32 @@
+<?
+	$TEMPLATE_PRODUCT_IBLOCK_ID = "16";
+	$TEMPLATE_PRICE_CODES = "BASE";
+	$TEMPLATE_THEME_NAME = "default";
+	$TEMPLATE_BACKGROUND_NAME = "white";
+	$TEMPLATE_HEADER = "header6";
+	$TEMPLATE_SUBHEADER_COLOR = "default";
+	$TEMPLATE_HEADER_COLOR = "theme";
+	$TEMPLATE_HEADER_TYPE = "type1";
+	$TEMPLATE_PANELS_COLOR = "white";
+	$TEMPLATE_FOOTER_LINE_COLOR = "default";
+	$TEMPLATE_FOOTER_VARIANT = "1";
+	$TEMPLATE_TELEPHONE_1 = "+7 (800) 000-00-00";
+	$TEMPLATE_TELEPHONE_2 = "+7 (800) 000-00-02";
+	$TEMPLATE_EMAIL_1 = "info@magazine.ru";
+	$TEMPLATE_EMAIL_2 = "sale@magazine.ru";
+	$TEMPLATE_ADDRESS = "Московский пр. д 91";
+	$TEMPLATE_FULL_ADDRESS = "г. Санкт-Петербург улица Пушкина, д.53";
+	$TEMPLATE_SLOGAN = "Наш новый взгляд на интернет-магазин.";
+	$TEMPLATE_WORKING_TIME = "График работы Пн-Пт: с 9:00 до 21:00 Сб: с 9:00 до 18:00 Вс: Выходной";
+	$TEMPLATE_WORKING_TIME_SHORT = "с 9:00 до 18:00 ежедневно";
+	$TEMPLATE_COPYRIGHT = "Copyright 2005-2019 © dresscode.ru - модный интернет-магазин одежды, обуви и аксессуаров. Все права защищены.";
+	$TEMPLATE_VK_LINK = "https://vk.com/feed";
+	$TEMPLATE_INSTAGRAM_LINK = "https://www.instagram.com/";
+	$TEMPLATE_FACEBOOK_LINK = "https://www.facebook.com/";
+	$TEMPLATE_YOUTUBE_LINK = "https://www.youtube.com/";
+	$TEMPLATE_ODNOKLASSNIKI_LINK = "https://ok.ru/";
+	$TEMPLATE_TWITTER_LINK = "https://twitter.com/";
+	$TEMPLATE_AUTH_TYPE = "PASS";
+	$TEMPLATE_USE_MASKED_INPUT = "N";
+	$TEMPLATE_MASKED_INPUT_FORMAT = "+7 (999) 999-99-99";
+?>

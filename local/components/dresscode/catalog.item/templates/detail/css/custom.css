@@ -1,0 +1,4 @@
+/* Скрываем блок с дублирующимися характеристиками товара */
+.changePropertiesNoGroup {
+    display: none !important;
+}

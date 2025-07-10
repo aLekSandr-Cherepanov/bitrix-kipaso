@@ -1,0 +1,434 @@
+#catalogReviews {
+	margin-top: 24px;
+	overflow: hidden;
+}
+
+#catalogReviews .heading {
+	padding: 36px 24px;
+	font-weight: 800;
+	font-size: 20px;
+	font-family: robotobold;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+	border-top: 1px solid #e7e8ea;
+}
+
+#catalogReviews .heading .reviewAddButton {
+	display: inline-block;
+	margin-left: 24px;
+	padding-bottom: 4px;
+	color: #888888;
+	font-weight: 400;
+	font-size: 12px;
+	font-family: robotoregular;
+	text-decoration: none;
+	vertical-align: middle;
+	border-bottom: 1px dashed #888888;
+	transition: all 0.2s ease-in-out;
+}
+
+#catalogReviews .heading .reviewAddButton:active {
+	position: relative;
+	top: 1px;
+}
+
+#catalogReviews .heading .label {
+	display: inline-block;
+	color: #888888;
+	font-weight: 400;
+	font-size: 14px;
+	font-family: robotoregular;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+#catalogReviews .ratingContainer {
+	float: right;
+	line-height: 20px;
+}
+
+#catalogReviews .ratingContainer .rating,
+#reviews .rating {
+	position: relative;
+	z-index: 2;
+	display: inline-block;
+	width: 79px;
+	height: 15px;
+	margin-top: 0;
+	margin-left: 6px;
+	vertical-align: middle;
+}
+
+#catalogReviews .ratingContainer .rating {
+	margin-left: 12px;
+}
+
+#catalogReviews .ratingContainer .rating i,
+#reviews .rating i {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: block;
+	width: 79px;
+	height: 15px;
+	background: url("../images/rating.svg") repeat 0 0 transparent;
+}
+
+#catalogReviews .ratingContainer .rating i.m,
+#reviews .rating i.m {
+	z-index: 10;
+	width: 0;
+	background: url("../images/rating.svg") repeat 0 -14px transparent;
+}
+
+#reviews .rating {
+	margin-top: -4px;
+}
+
+#catalogElement .ratingContainer .newReview {
+	float: right;
+	margin-right: 12px;
+	color: #000000;
+}
+
+#catalogElement .newReview:hover {
+	color: #0074d9;
+}
+
+#catalogElement #reviews,
+#catalogElement #reviews ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+#catalogElement #reviews .reviewItem {
+	position: relative;
+	margin-bottom: 24px;
+	padding-top: 24px;
+	border-top: 1px solid #f7f7f7;
+}
+
+#catalogElement #reviews .reviewItem:first-child {
+	padding-top: 24px;
+	border-top: 1px solid #e7e8ea;
+}
+
+#reviews .reviewTable {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+}
+
+#reviews .reviewTable .reviewColumn {
+	position: relative;
+	display: table-cell;
+	padding: 0 24px;
+	font-size: 14px;
+	vertical-align: top;
+}
+
+#reviews .reviewTable .reviewColumn .label {
+	display: inline-block;
+	font-size: 14px;
+}
+
+#reviews .reviewTable .reviewColumn .reviewRating,
+#reviews .reviewTable .reviewColumn .reviewName {
+	margin-top: 12px;
+}
+
+#reviews .reviewTable .reviewColumn .reviewDate,
+#reviews .reviewTable .reviewColumn .reviewName {
+	line-height: 21px;
+}
+
+#reviews .reviewTable .reviewColumn .advantages,
+#reviews .reviewTable .reviewColumn .limitations {
+	margin-bottom: 12px;
+}
+
+#reviews .reviewTable .reviewColumn .advantages .label,
+#reviews .reviewTable .reviewColumn .impressions .label,
+#reviews .reviewTable .reviewColumn .limitations .label {
+	margin-bottom: 4px;
+	font-size: 14px;
+}
+
+#reviews .reviewTable .reviewColumn .advantages p,
+#reviews .reviewTable .reviewColumn .impressions p,
+#reviews .reviewTable .reviewColumn .limitations p {
+	font-size: 13px;
+}
+
+#reviews .reviewTable .reviewColumn:first-child {
+	width: 30%;
+	text-align: center;
+	vertical-align: middle;
+}
+
+#reviews .reviewTable .reviewColumn .reviewDate {
+	color: #888888;
+}
+
+#reviews .reviewTable .reviewColumn .reviewName,
+#reviews .reviewTable .reviewColumn .reviewName .label {
+	font-size: 16px;
+}
+
+#catalogElement #reviews .controls {
+	/* float: right; */
+	width: 260px;
+	height: 35px;
+	margin-top: 24px;
+	line-height: 35px;
+	text-align: center;
+	background: #f4f4f4;
+}
+
+#catalogElement #reviews .controls a {
+	text-decoration: none;
+}
+
+#catalogElement #reviews .controls a:active {
+	position: relative;
+	top: 1px;
+}
+
+#catalogElement #reviews .controls .good {
+	margin-right: 4px;
+	color: #009e02;
+}
+
+#catalogElement #reviews .controls .good:hover {
+	color: #008902;
+}
+
+#catalogElement #reviews .controls .bad {
+	color: #ff0000;
+}
+
+#catalogElement #reviews .controls .bad:hover {
+	color: #9d9d9d;
+}
+
+#catalogElement #reviews p {
+	margin: 0;
+	color: #666666;
+	line-height: 21px;
+}
+
+#catalogElement #reviews .comment {
+	clear: both;
+}
+
+#catalogElement #reviews .hide {
+	display: none;
+}
+
+#showallReviews {
+	display: block;
+	width: 200px;
+	height: 40px;
+	margin: 24px 24px 24px auto;
+	color: #000000;
+	line-height: 40px;
+	text-align: center;
+	text-decoration: none;
+	border: 1px solid #e7e8ea;
+	border-radius: 4px;
+	transition: all 0.2s ease-in-out;
+}
+
+#catalogElement #newReview {
+	display: none;
+}
+
+#catalogElement #newReview .heading {
+	display: block;
+	margin-bottom: 24px;
+	padding: 36px 24px;
+	font-weight: 800;
+	font-size: 20px;
+	font-family: robotobold;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+	border-top: 1px solid #e7e8ea;
+	border-bottom: 1px solid #e7e8ea;
+}
+
+#catalogElement #newReview form {
+	padding: 0 24px;
+}
+
+#catalogElement #newReview ins {
+	display: block;
+	margin-bottom: 4px;
+	font-size: 14px;
+	text-decoration: none;
+}
+
+#catalogElement #newReview #newRating {
+	position: relative;
+}
+
+#catalogElement #newReview .rating {
+	position: absolute;
+	top: -3px;
+	left: 100px;
+	z-index: 10;
+	width: 150px;
+	cursor: pointer;
+}
+
+#catalogElement #newReview .rating i {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: block;
+	width: 150px;
+	height: 22px;
+	background: url("../images/newRating.svg") repeat 0 0 transparent;
+}
+
+#catalogElement #newReview .rating i.m {
+	z-index: 10;
+	width: 0;
+	background: url("../images/newRating.svg") repeat 0 -22px transparent;
+}
+
+#catalogElement #newReview .usedSelect {
+	clear: both;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	list-style: none;
+}
+
+#catalogElement #newReview .usedSelect li {
+	float: left;
+	margin-right: 12px;
+	margin-bottom: 12px;
+}
+
+#catalogElement #newReview .usedSelect li a {
+	display: block;
+	height: 35px;
+	padding: 0 12px;
+	color: #000000;
+	font-size: 13px;
+	line-height: 35px;
+	text-align: center;
+	text-decoration: none;
+	border: 1px solid #e7e8ea;
+	border-radius: 4px;
+	transition: all 0.2s ease-in-out;
+}
+
+#catalogElement #newReview .usedSelect li a:hover {
+	color: #696969;
+}
+
+#catalogElement #newReview .usedSelect li a:active {
+	position: relative;
+	top: 1px;
+}
+
+#catalogElement #newReview .usedSelect li a.selected {
+	color: #ffffff;
+}
+
+#catalogElement #newReview table {
+	width: 100%;
+	table-layout: fixed;
+	border-collapse: collapse;
+}
+
+#catalogElement #newReview table td {
+	width: 50%;
+	vertical-align: top;
+}
+
+#catalogElement #newReview table td:first-child {
+	padding-right: 24px;
+}
+
+#catalogElement #newReview label {
+	display: block;
+	margin: 12px 0;
+}
+
+#catalogElement #newReview textarea {
+	box-sizing: border-box;
+	width: 100%;
+	height: 90px;
+	padding-top: 12px;
+	padding-left: 12px;
+	font-family: "roboto_ltregular";
+	background: #ffffff;
+	border: 1px solid #e4e4e4;
+	transition: all 0.2s ease-in-out;
+	resize: none;
+}
+
+#catalogElement #newReview textarea:focus {
+	border: 1px solid #cccccc;
+	outline: none;
+}
+
+#catalogElement #newReview input {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 74%;
+	height: 50px;
+	margin-bottom: 12px;
+	padding-left: 12px;
+	font-family: "roboto_ltregular";
+	vertical-align: top;
+	background: #ffffff;
+	border: 1px solid #e4e4e4;
+	transition: all 0.2s ease-in-out;
+}
+
+#catalogElement #newReview input:focus {
+	border: 1px solid #cccccc;
+}
+
+#catalogElement #newReview .submit {
+	display: inline-block;
+	width: 23%;
+	height: 50px;
+	margin-left: 3%;
+	color: #ffffff;
+	line-height: 50px;
+	text-align: center;
+	text-decoration: none;
+	vertical-align: middle;
+	border-radius: 4px;
+	transition: all 0.2s ease-in-out;
+}
+
+#catalogElement #newReview .submit:active {
+	position: relative;
+	top: 1px;
+}
+
+#catalogElement #newReview .reviewError {
+	padding: 0 24px;
+	overflow: hidden;
+}
+
+#catalogElement #newReview .reviewError .cap {
+	color: #000000;
+	font-size: 16px;
+}
+
+#catalogElement #newReview .reviewError img {
+	float: left;
+	margin-right: 24px;
+	vertical-align: middle;
+}
+
+#catalogElement .countReviewsTools {
+	cursor: pointer;
+}

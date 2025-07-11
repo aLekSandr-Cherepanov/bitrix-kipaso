@@ -8,41 +8,11 @@ ini_set('error_log', $_SERVER['DOCUMENT_ROOT'].'/upload/owen_import_log.txt');
 ini_set('log_errors', 1);
 
 // Убираем лимит времени 
-// На большинстве хостингов эти настройки не работают, поэтому делаем пошаговый импорт
-ini_set('max_execution_time', 300); // Пытаемся увеличить до 5 минут
-set_time_limit(300); // То же самое, дублируем для надежности
+ini_set('max_execution_time', 0);
+set_time_limit(0);
 ini_set('memory_limit', '1024M'); 
 
-// Параметры пошагового импорта
-$step_size = 10; // Количество товаров для обработки за один запуск
-$current_step = isset($_GET['step']) ? (int)$_GET['step'] : 0;
 
-// Путь для сохранения прогресса
-$progress_file = $_SERVER['DOCUMENT_ROOT'] . '/upload/import_progress.txt';
-
-// Функция для сохранения прогресса
-function saveProgress($step, $totalProducts, $processed) {
-    global $progress_file;
-    $data = json_encode([
-        'step' => $step,
-        'total' => $totalProducts,
-        'processed' => $processed,
-        'timestamp' => time()
-    ]);
-    file_put_contents($progress_file, $data);
-}
-
-// Функция для загрузки прогресса
-function loadProgress() {
-    global $progress_file;
-    if (file_exists($progress_file)) {
-        $data = file_get_contents($progress_file);
-        return json_decode($data, true);
-    }
-    return null;
-}
-
-// Убираем лимит времени 
 ini_set('max_input_time', 0);       
 ini_set('default_socket_timeout', 600); 
 ini_set('post_max_size', '64M');    
@@ -133,46 +103,51 @@ if (!is_dir($docDir)) {
     mkdir($docDir, 0755, true);
 }
 
-function downloadFile($url, $description = '') {
-    global $docDir, $iblockId;
+/**
+ * Функция для проверки соединения с БД и переподключения при необходимости
+ */
+function checkDBConnection() {
+    global $DB;
     
-    // Получаем имя файла из URL
-    $fileName = basename($url);
-    $localPath = $docDir . $fileName;
-    
-    // Сначала проверяем, есть ли такой файл уже в базе Битрикс
-    $existingFile = false;
-    
-    // Ищем файл в базе по имени
-    $rsFiles = CFile::GetList([], ["ORIGINAL_NAME" => $fileName]);
-    if ($fileItem = $rsFiles->Fetch()) {
-        error_log("Файл уже существует в базе Битрикс: {$fileName}, ID: {$fileItem['ID']}");
-        
-        // Используем существующий файл
-        $existingFile = CFile::GetFileArray($fileItem['ID']);
-        if ($existingFile) {
-            $fileArray = [
-                'name' => $existingFile['FILE_NAME'],
-                'size' => $existingFile['FILE_SIZE'],
-                'tmp_name' => $existingFile['SRC'],
-                'type' => $existingFile['CONTENT_TYPE'],
-                'old_file' => $fileItem['ID'],
-                'MODULE_ID' => 'iblock'
-            ];
+    try {
+        // Проверяем соединение путем выполнения простого запроса
+        $DB->Query("SELECT 1");
+    } catch (\Exception $e) {
+        // Если возникла ошибка, пробуем переподключиться
+        try {
+            $DB->Disconnect();
+            $connected = $DB->Connect(
+                $DB->DBHost, 
+                $DB->DBName, 
+                $DB->DBLogin, 
+                $DB->DBPassword
+            );
             
-            if (!empty($description)) {
-                $fileArray['description'] = $description;
-            } else {
-                $fileArray['description'] = $fileName;
+            if (!$connected) {
+                echo "Ошибка соединения с базой данных. Попробуйте запустить скрипт заново.<br>";
+                return false;
             }
-            
-            return $fileArray;
+        } catch (\Exception $e) {
+            echo "Ошибка переподключения к БД: " . $e->getMessage() . "<br>";
+            return false;
         }
     }
     
-    // Если файл существует локально, но не в базе
+    return true;
+}
+
+function downloadFile($url, $description = '') {
+    global $docDir;
+    
+    
+    $fileName = basename($url);
+    $localPath = $docDir . $fileName;
+    
+    
     if (file_exists($localPath)) {
-        error_log("Файл уже существует локально: {$fileName}, используем локальную копию");
+        
+        error_log("Файл уже существует: {$fileName}, используем локальную копию");
+        
         
         $fileArray = CFile::MakeFileArray($localPath);
         $fileArray['MODULE_ID'] = 'iblock';
@@ -227,19 +202,97 @@ function downloadFile($url, $description = '') {
     }
 }
 
+/**
+ * Функция обрабатывает документы и сертификаты товара
+ * @param SimpleXMLElement $product Товар из XML
+ * @return array Массив с двумя элементами: [документы, сертификаты]
+ */
+function collectProductDocs($product) {
+    global $docDir;
+    $docsArray = [];
+    $certsArray = [];
+    
+    echo "<hr>Проверка документов для товара: {$product->name}<br>";
+    
+    if(isset($product->docs)) {
+        echo "Секция docs существует.<br>";
+        
+        // Используем count() для SimpleXML более безопасным способом
+        $docsCount = count($product->docs->children());
+        echo "Количество дочерних элементов в docs: {$docsCount}<br>";
+        
+        // Отладка - выводим все дочерние элементы
+        foreach($product->docs->children() as $childName => $child) {
+            echo "Найден дочерний элемент: {$childName}<br>";
+        }
+        
+        // Перебираем все группы документов
+        foreach($product->docs->doc as $docGroup) {
+            echo "Обработка группы документов: " . (string)$docGroup->name . "<br>";
+            $groupName = (string)$docGroup->name;
+            
+            // Перебираем документы в группе
+            if(isset($docGroup->items)) {
+                $itemsCount = count($docGroup->items->children());
+                echo "Количество элементов items: {$itemsCount}<br>";
+                
+                foreach($docGroup->items->item as $docItem) {
+                    $docName = (string)$docItem->name;
+                    $docLink = (string)$docItem->link;
+                    
+                    // Скачиваем файл и готовим его для загрузки в Битрикс
+                    echo "Загрузка файла: {$docLink}<br>";
+                    $fileArray = downloadFile($docLink, $docName);
+                    
+                    // Если файл успешно загружен, добавляем его в соответствующий массив
+                    if ($fileArray) {
+                        // Распределяем по типам в зависимости от группы
+                        if(mb_strtolower($groupName) === 'документация') {
+                            $docsArray[] = $fileArray;
+                        } elseif(mb_strtolower($groupName) === 'сертификаты') {
+                            $certsArray[] = $fileArray;
+                        }
+                        // Пропускаем обработку ПО по запросу пользователя
+                    }
+                }
+            }
+        }
+    }
+    
+    // Выводим информацию о количестве найденных файлов
+    if(!empty($docsArray)) {
+        echo "Добавлено " . count($docsArray) . " документов в свойство DOCS<br>";
+        echo "<pre>";
+        print_r($docsArray);
+        echo "</pre>";
+    } else {
+        echo "Документы не найдены<br>";
+    }
+    
+    if(!empty($certsArray)) {
+        echo "Добавлено " . count($certsArray) . " сертификатов в свойство SERT<br>";
+        echo "<pre>";
+        print_r($certsArray);
+        echo "</pre>";
+    } else {
+        echo "Сертификаты не найдены<br>";
+    }
+    
+    return [$docsArray, $certsArray];
+}
+
 function importProducts() {
     
     ini_set('default_socket_timeout', 0); 
     
-    global $xml, $iblockId, $docDir, $step_size, $current_step, $progress_file;
+    global $xml, $iblockId, $docDir;
     $el = new CIBlockElement;
     
-    // Загружаем прогресс, если есть
-    $progress = loadProgress();
-    $processedCount = $progress ? $progress['processed'] : 0;
-    
-    // Получаем общее количество товаров
+   
+    $processedCount = 0;
     $totalProducts = 0;
+    
+    
     foreach($xml->categories->category as $cat) {
         foreach($cat->items->item as $sub) {
             foreach($sub->products->product as $p) {
@@ -248,41 +301,6 @@ function importProducts() {
         }
     }
     
-    // Если уже все обработано, сообщаем об этом
-    if ($processedCount >= $totalProducts) {
-        echo "<div style='background: #dff0d8; padding: 15px; border-radius: 5px;'>
-            <h2>Импорт завершен!</h2>
-            <p>Всего обработано товаров: {$processedCount} из {$totalProducts}</p>
-            <p><a href='/newPhpCatalog.php?reset=1' class='btn btn-warning'>Начать импорт заново</a></p>
-        </div>";
-        return;
-    }
-    
-    // Если пользователь запросил сброс прогресса
-    if (isset($_GET['reset']) && $_GET['reset'] == 1) {
-        if (file_exists($progress_file)) {
-            unlink($progress_file);
-        }
-        $current_step = 0;
-        $processedCount = 0;
-    }
-
-    // Счетчики для пошаговой обработки
-    $currentProductIndex = 0;
-    $processed_this_run = 0;
-    $start_index = $current_step * $step_size;
-    $max_index = $start_index + $step_size;
-    
-    // Выводим информацию о прогрессе
-    echo "<div style='background: #d9edf7; padding: 15px; border-radius: 5px; margin-bottom: 20px;'>
-        <h2>Процесс импорта</h2>
-        <p>Всего товаров: {$totalProducts}</p>
-        <p>Обработано: {$processedCount}</p>
-        <p>Текущий шаг: {$current_step}</p>
-        <div class='progress' style='height: 20px; background-color: #f5f5f5; border-radius: 4px; margin-bottom: 20px;'>
-            <div class='progress-bar' role='progressbar' style='width: " . (($processedCount / $totalProducts) * 100) . "%; background-color: #5bc0de; height: 100%; border-radius: 4px;'></div>
-        </div>
-    </div>";
 
     foreach($xml->categories->category as $cat) {
         foreach($cat->items->item as $sub) {
@@ -301,19 +319,6 @@ function importProducts() {
 
             
             foreach($sub->products->product as $p) {
-                // Пропускаем товары, которые не входят в текущий шаг
-                if ($currentProductIndex < $start_index) {
-                    $currentProductIndex++;
-                    continue;
-                }
-                
-                // Останавливаемся, если достигли максимума для текущего шага
-                if ($currentProductIndex >= $max_index) {
-                    break 3; // Выходим из всех циклов
-                }
-                
-                $currentProductIndex++;
-                $processed_this_run++;
                 $xmlId      = (string)$p->id;
                 $name       = (string)$p->name;
                 $detailText = (string)$p->desc;  
@@ -331,6 +336,53 @@ function importProducts() {
                 $fileArray["MODULE_ID"] = "iblock";
 
                 $propertyValues = [];
+
+                // Обрабатываем документы и сертификаты
+                list($docsArray, $certsArray) = collectProductDocs($p);
+                
+                // Проверяем соединение с БД перед работой с файлами
+                checkDBConnection();
+                
+                // Добавляем свойства в массив, формируем правильный формат для множественных свойств типа "файл"
+                if(!empty($docsArray)) {
+                    // Для множественных свойств типа файл, нужно передавать значения в специальном формате
+                    $docsValues = [];
+                    foreach($docsArray as $fileArray) {
+                        $fileId = CFile::SaveFile($fileArray, "iblock");
+                        if ($fileId) {
+                            $docsValues[] = $fileId;
+                            echo "Файл сохранен с ID: {$fileId}<br>";
+                        }
+                    }
+                    
+                    if (!empty($docsValues)) {
+                        $propertyValues['DOCS'] = $docsValues;
+                        echo "<hr>Свойство DOCS подготовлено к сохранению: " . count($docsValues) . " документов<br>";
+                        echo "<pre>";
+                        var_dump($docsValues);
+                        echo "</pre>";
+                    }
+                }
+                
+                if(!empty($certsArray)) {
+                    // Для множественных свойств типа файл, нужно передавать значения в специальном формате
+                    $certValues = [];
+                    foreach($certsArray as $fileArray) {
+                        $fileId = CFile::SaveFile($fileArray, "iblock");
+                        if ($fileId) {
+                            $certValues[] = $fileId;
+                            echo "Сертификат сохранен с ID: {$fileId}<br>";
+                        }
+                    }
+                    
+                    if (!empty($certValues)) {
+                        $propertyValues['SERT'] = $certValues;
+                        echo "<hr>Свойство SERT подготовлено к сохранению: " . count($certValues) . " сертификатов<br>";
+                        echo "<pre>";
+                        var_dump($certValues);
+                        echo "</pre>";
+                    }
+                }
 
                 // 4.1) Технические характеристики (HTML-свойство)
                 if ($specificText !== '') {
@@ -356,73 +408,19 @@ function importProducts() {
                         ];
                     }
                 }
-
                 
-                $arProps = [];
+                // Объединяем все свойства в один массив
+                $allProperties = $propertyValues;
                 
-                // Обработка документов и сертификатов
-                if(isset($p->docs)) {
-                    
-                    $docsArray = [];
-                    $certsArray = [];
-                    
-                    // Обрабатываем каждую группу документов
-                    foreach($p->docs->doc as $docGroup) {
-                        $groupName = (string)$docGroup->name;
-                        
-                        if(isset($docGroup->items)) {
-                            foreach($docGroup->items->item as $docItem) {
-                                $docName = (string)$docItem->name;
-                                $docLink = (string)$docItem->link;
-                                
-                                // Проверяем валидность URL перед загрузкой
-                                if (filter_var($docLink, FILTER_VALIDATE_URL)) {
-                                    // Загружаем файл с проверкой существования
-                                    $fileArray = downloadFile($docLink, $docName);
-                                    
-                                    if ($fileArray) {
-                                        // Распределяем файл по категориям в зависимости от группы
-                                        $groupNameLower = mb_strtolower($groupName);
-                                        if($groupNameLower === 'документация') {
-                                            $docsArray[] = $fileArray;
-                                        } elseif($groupNameLower === 'сертификаты') {
-                                            $certsArray[] = $fileArray;
-                                        }
-                                    }
-                                } else {
-                                    error_log("Некорректный URL документа: {$docLink} для {$docName}");
-                                }
-                            }
-                        }
+                // Проверяем наличие свойств перед формированием загрузки
+                if (!empty($allProperties)) {
+                    echo "<hr>Всего свойств для загрузки: " . count($allProperties) . "<br>";
+                    if (isset($allProperties['DOCS'])) {
+                        echo "Документы присутствуют: " . count($allProperties['DOCS']) . "<br>";
                     }
-                    
-                    // Добавляем документацию в свойства товара
-                    if(!empty($docsArray)) {
-                        $arProps['DOCS'] = $docsArray;
+                    if (isset($allProperties['SERT'])) {
+                        echo "Сертификаты присутствуют: " . count($allProperties['SERT']) . "<br>";
                     }
-                    
-                    // Добавляем сертификаты в свойства товара
-                    if(!empty($certsArray)) {
-                        $arProps['CERTIFICATE'] = $certsArray;
-                    }
-                }
-
-                // Добавляем свойства из $propertyValues в $arProps
-                if (!empty($propertyValues)) {
-                    $arProps = array_merge($arProps, $propertyValues);
-                }
-
-                // Делаем финальную проверку данных перед подготовкой $arLoad
-                // Явно проверяем наличие характеристик в свойствах
-                if (isset($arProps['SPECIFICATIONS_TEXT'])) {
-                } 
-                
-                // Ещё одна проверка для уверенности - добавляем характеристики напрямую в $arLoad
-                $propertyValuesForLoad = $arProps;
-                
-                // Добавляем SPECIFICATIONS_TEXT напрямую, если он не был добавлен ранее
-                if (!empty($propertyValues['SPECIFICATIONS_TEXT']) && !isset($propertyValuesForLoad['SPECIFICATIONS_TEXT'])) {
-                    $propertyValuesForLoad['SPECIFICATIONS_TEXT'] = $propertyValues['SPECIFICATIONS_TEXT'];
                 }
                 
                 $arLoad = [
@@ -435,7 +433,7 @@ function importProducts() {
                     "DETAIL_TEXT"       => $detailText,
                     "PREVIEW_PICTURE"   => $fileArray,
                     "DETAIL_PICTURE"    => $fileArray,
-                    "PROPERTY_VALUES"   => $propertyValuesForLoad, 
+                    "PROPERTY_VALUES"   => $allProperties, 
                 ];
 
                 $resE = CIBlockElement::GetList(
@@ -464,37 +462,62 @@ function importProducts() {
                         );
                     } else {
                         
-                        if(!empty($arProps)) {
+                        // Дополнительно установим свойства напрямую, чтобы убедиться, что они сохранены
+                        if (!empty($allProperties)) {
+                            echo "<hr>Явно устанавливаем свойства для товара ID: {$resE["ID"]}<br>";
                             
-                            CIBlockElement::SetPropertyValuesEx($resE["ID"], $iblockId, $arProps);
+                            // Проверяем соединение с БД перед операциями с файлами
+                            checkDBConnection();
                             
+                            // Устанавливаем свойства напрямую
+                            CIBlockElement::SetPropertyValuesEx($resE["ID"], $iblockId, $allProperties);
                             
-                            
-                           
+                            // Проверяем, сохранились ли документы
+                            echo "<hr>Проверка сохранения документов:<br>";
                             $dbProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "DOCS"]);
+                            $docsCount = 0;
                             while($prop = $dbProps->Fetch()) {
-                             
                                 if($prop["VALUE"]) {
+                                    $docsCount++;
                                     $fileInfo = CFile::GetByID($prop["VALUE"])->Fetch();
-                                } else {
+                                    if($fileInfo) {
+                                        echo "Документ {$docsCount}: ID {$prop["VALUE"]}, Имя: {$fileInfo['ORIGINAL_NAME']}, Описание: {$prop["DESCRIPTION"]}<br>";
+                                    } else {
+                                        echo "Документ {$docsCount}: ID {$prop["VALUE"]} - информация о файле не найдена<br>";
+                                    }
                                 }
                             }
                             
+                            if ($docsCount === 0) {
+                                echo "Документы не найдены в свойствах товара<br>";
+                            }
                             
-                            $dbProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "CERTIFICATE"]);
+                            // Проверяем, сохранились ли сертификаты
+                            echo "<hr>Проверка сохранения сертификатов:<br>";
+                            $dbProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "SERT"]);
+                            $certsCount = 0;
                             while($prop = $dbProps->Fetch()) {
-                                
                                 if($prop["VALUE"]) {
+                                    $certsCount++;
                                     $fileInfo = CFile::GetByID($prop["VALUE"])->Fetch();
-                                } else {
+                                    if($fileInfo) {
+                                        echo "Сертификат {$certsCount}: ID {$prop["VALUE"]}, Имя: {$fileInfo['ORIGINAL_NAME']}, Описание: {$prop["DESCRIPTION"]}<br>";
+                                    } else {
+                                        echo "Сертификат {$certsCount}: ID {$prop["VALUE"]} - информация о файле не найдена<br>";
+                                    }
                                 }
+                            }
+                            
+                            if ($certsCount === 0) {
+                                echo "Сертификаты не найдены в свойствах товара<br>";
                             }
                             
                             // Проверяем сохранение свойства SPECIFICATIONS_TEXT
                             $dbSpecsProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "SPECIFICATIONS_TEXT"]);
+                            $hasSpecText = false;
                             while($specProp = $dbSpecsProps->Fetch()) {
-                                if (is_array($specProp["VALUE"])) {
-                                } else {
+                                if (!empty($specProp["VALUE"])) {
+                                    $hasSpecText = true;
                                 }
                             }
                         }
@@ -509,18 +532,54 @@ function importProducts() {
                         );
                     } else {
                         
-                        // Если у нас есть свойства, устанавливаем их и для новых элементов
-                        if (!empty($arProps)) {
+                        // Если есть свойства для нового элемента - устанавливаем их напрямую
+                        if (!empty($allProperties)) {
+                            echo "<hr>Явно устанавливаем свойства для нового товара ID: {$newElementId}<br>";
                             
-                            // Устанавливаем свойства для нового элемента
-                            CIBlockElement::SetPropertyValuesEx($newElementId, $iblockId, $arProps);
+                            // Проверяем соединение с БД перед операциями с файлами
+                            checkDBConnection();
                             
-                            // Проверяем сохранение свойства SPECIFICATIONS_TEXT для нового элемента
-                            $dbSpecsProps = CIBlockElement::GetProperty($iblockId, $newElementId, [], ["CODE" => "SPECIFICATIONS_TEXT"]);
-                            while($specProp = $dbSpecsProps->Fetch()) {
-                                if (is_array($specProp["VALUE"])) {
-                                } else {
+                            // Устанавливаем свойства напрямую
+                            CIBlockElement::SetPropertyValuesEx($newElementId, $iblockId, $allProperties);
+                            
+                            // Проверяем, сохранились ли документы
+                            echo "<hr>Проверка сохранения документов для нового товара:<br>";
+                            $dbProps = CIBlockElement::GetProperty($iblockId, $newElementId, [], ["CODE" => "DOCS"]);
+                            $docsCount = 0;
+                            while($prop = $dbProps->Fetch()) {
+                                if($prop["VALUE"]) {
+                                    $docsCount++;
+                                    $fileInfo = CFile::GetByID($prop["VALUE"])->Fetch();
+                                    if($fileInfo) {
+                                        echo "Документ {$docsCount}: ID {$prop["VALUE"]}, Имя: {$fileInfo['ORIGINAL_NAME']}, Описание: {$prop["DESCRIPTION"]}<br>";
+                                    } else {
+                                        echo "Документ {$docsCount}: ID {$prop["VALUE"]} - информация о файле не найдена<br>";
+                                    }
                                 }
+                            }
+                            
+                            if ($docsCount === 0) {
+                                echo "Документы не найдены в свойствах нового товара<br>";
+                            }
+                            
+                            // Проверяем, сохранились ли сертификаты
+                            echo "<hr>Проверка сохранения сертификатов для нового товара:<br>";
+                            $dbProps = CIBlockElement::GetProperty($iblockId, $newElementId, [], ["CODE" => "SERT"]);
+                            $certsCount = 0;
+                            while($prop = $dbProps->Fetch()) {
+                                if($prop["VALUE"]) {
+                                    $certsCount++;
+                                    $fileInfo = CFile::GetByID($prop["VALUE"])->Fetch();
+                                    if($fileInfo) {
+                                        echo "Сертификат {$certsCount}: ID {$prop["VALUE"]}, Имя: {$fileInfo['ORIGINAL_NAME']}, Описание: {$prop["DESCRIPTION"]}<br>";
+                                    } else {
+                                        echo "Сертификат {$certsCount}: ID {$prop["VALUE"]} - информация о файле не найдена<br>";
+                                    }
+                                }
+                            }
+                            
+                            if ($certsCount === 0) {
+                                echo "Сертификаты не найдены в свойствах нового товара<br>";
                             }
                         }
                     }
@@ -528,64 +587,11 @@ function importProducts() {
             }
         }
     }
-    
-    // Увеличиваем счетчик обработанных товаров
-    $processedCount++;
-    
-    // Сохраняем прогресс
-    $new_step = $current_step + 1;
-    saveProgress($new_step, $totalProducts, $processedCount);
-    
-    // Проверяем, все ли товары обработаны
-    if ($processedCount >= $totalProducts) {
-        echo "<div style='background: #dff0d8; padding: 15px; border-radius: 5px; margin-top: 20px;'>
-            <h2>Импорт успешно завершен!</h2>
-            <p>Всего обработано товаров: {$processedCount} из {$totalProducts}</p>
-            <p><a href='/newPhpCatalog.php?reset=1' class='btn btn-primary'>Запустить импорт заново</a></p>
-        </div>";
-    } else {
-        // Показываем ссылку на следующий шаг
-        $next_url = $_SERVER['PHP_SELF'] . '?step=' . $new_step;
-        echo "<div style='margin-top: 20px;'>
-            <h3>Обработано товаров в текущем шаге: {$processed_this_run}</h3>
-            <p>Всего обработано: {$processedCount} из {$totalProducts} (" . round(($processedCount/$totalProducts)*100, 1) . "%)</p>
-            <p>
-                <a href='{$next_url}' class='btn btn-success' style='background-color: #5cb85c; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block;'>
-                    Продолжить импорт (Шаг {$new_step})
-                </a>
-            </p>
-            <script>
-                // Автоматический переход к следующему шагу через 2 секунды
-                setTimeout(function() {
-                    window.location.href = '{$next_url}';
-                }, 2000);
-            </script>
-        </div>";
-    }
 }
 
 
 // 4. Запускаем
-
-// Если это первый запуск, сначала создаем разделы
-if ($current_step === 0 || isset($_GET['reset'])) {
-    // Создаем разделы
-    importSections($xml->categories->category);
-    echo "<div style='background: #d9edf7; padding: 15px; border-radius: 5px; margin-bottom: 20px;'>
-        <h3>Разделы успешно созданы</h3>
-        <p>Начинаем импорт товаров...</p>
-    </div>";
-}
-
-// Запускаем импорт товаров
+importSections($xml->categories->category);
 importProducts();
 
-// Дополнительные стили для красивого отображения
-echo "<style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    .btn { display: inline-block; padding: 10px 15px; text-decoration: none; border-radius: 4px; }
-    .btn-primary { background-color: #337ab7; color: white; }
-    .btn-warning { background-color: #f0ad4e; color: white; }
-</style>";
-
-// Конец скрипта
+echo "Импорт завершён.";

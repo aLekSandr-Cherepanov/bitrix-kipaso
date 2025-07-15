@@ -92,29 +92,48 @@ if (!is_dir($docDir)) {
 // Функция для загрузки файла по URL
 function downloadFile($url, $description = '') {
     global $docDir;
-    
-    // Создаём уникальное имя файла на основе оригинального имени
-    $fileName = basename($url);
+
+    // Получаем имя файла из URL
+    $fileName  = basename($url);
     $localPath = $docDir . $fileName;
-    
-    // Скачиваем файл - увеличиваем таймауты до максимальных значений
-    $http = new HttpClient([
-        'socketTimeout' => 600,    // 10 минут
-        'streamTimeout' => 1800,   // 30 минут
-        'disableSslVerification' => true, // Отключаем проверку SSL для скачивания файлов
-    ]);
-    
-    if ($http->download($url, $localPath)) {
-        // Готовим массив для Bitrix
+
+    // Если файл уже сохранён локально, просто используем его
+    if (file_exists($localPath)) {
         $fileArray = CFile::MakeFileArray($localPath);
-        $fileArray['MODULE_ID'] = 'iblock';
-        $fileArray['description'] = $description;
-        
+        $fileArray['MODULE_ID']  = 'iblock';
+        $fileArray['description'] = $description ?: $fileName;
         return $fileArray;
-    } else {
-        trigger_error("Не удалось скачать файл: {$url}, ошибка: " . $http->getError(), E_USER_WARNING);
-        return false;
     }
+
+    // Проверяем, был ли файл уже загружен в Битрикс ранее
+    $rsFiles = CFile::GetList([], [
+        'ORIGINAL_NAME' => $fileName,
+    ]);
+
+    if ($fileItem = $rsFiles->Fetch()) {
+        $fileArray = CFile::MakeFileArray($fileItem['ID']);
+        $fileArray['MODULE_ID']  = 'iblock';
+        $fileArray['description'] = $description ?: $fileName;
+        return $fileArray;
+    }
+
+    // Скачиваем файл, если его нет на сервере
+    $http = new HttpClient([
+        'socketTimeout' => 600,
+        'streamTimeout' => 1800,
+        'disableSslVerification' => true,
+    ]);
+
+    if ($http->download($url, $localPath)) {
+        $fileArray = CFile::MakeFileArray($localPath);
+        $fileArray['MODULE_ID']  = 'iblock';
+        $fileArray['description'] = $description ?: $fileName;
+
+        return $fileArray;
+    }
+
+    trigger_error("Не удалось скачать файл: {$url}, ошибка: " . $http->getError(), E_USER_WARNING);
+    return false;
 }
 
 function importProducts() {
@@ -147,8 +166,8 @@ function importProducts() {
                 $imgUrl     = (string)$p->image;
 
                 // 3) Загружаем картинку
-                $fileArray = \CFile::MakeFileArray($imgUrl);
-                $fileArray["MODULE_ID"] = "iblock";
+                $imageFile = \CFile::MakeFileArray($imgUrl);
+                $imageFile["MODULE_ID"] = "iblock";
 
                 // 4) Подготовка массива свойств для элемента
                 $arProps = [];
@@ -187,16 +206,16 @@ function importProducts() {
                                 
                                 // Скачиваем файл и готовим его для загрузки в Битрикс
                                 echo "Загрузка файла: {$docLink}<br>";
-                                $fileArray = downloadFile($docLink, $docName);
+                                $docFile = downloadFile($docLink, $docName);
                                 
                                 // Если файл успешно загружен, добавляем его в соответствующий массив
-                                if ($fileArray) {
+                                if ($docFile) {
                                 
                                     // Распределяем по типам в зависимости от группы
                                     if(mb_strtolower($groupName) === 'документация') {
-                                        $docsArray[] = $fileArray;
+                                        $docsArray[] = $docFile;
                                     } elseif(mb_strtolower($groupName) === 'сертификаты') {
-                                        $certsArray[] = $fileArray;
+                                        $certsArray[] = $docFile;
                                     }
                                     // Пропускаем обработку ПО по запросу пользователя
                                 }
@@ -234,8 +253,8 @@ function importProducts() {
                     "ACTIVE"            => "Y",
                     "IBLOCK_SECTION_ID" => $sectionId,
                     "DETAIL_TEXT"       => $detailText,
-                    "PREVIEW_PICTURE"   => $fileArray,
-                    "DETAIL_PICTURE"    => $fileArray,
+                    "PREVIEW_PICTURE"   => $imageFile,
+                    "DETAIL_PICTURE"    => $imageFile,
                     "PROPERTY_VALUES"   => $arProps, // Добавляем свойства
                 ];
 
@@ -261,41 +280,6 @@ function importProducts() {
                     if(!$el->Update($resE["ID"], $arLoad)) {
                         trigger_error(
                             "Ошибка обновления товара {$name}: ".$el->LAST_ERROR,
-                            E_USER_WARNING
-                        );
-                    } else {
-                        // Обновляем свойства отдельно, т.к. метод Update может не обновлять свойства корректно
-                        if(!empty($arProps)) {
-                            echo "Устанавливаем свойства для элемента ID: {$resE["ID"]}<br>";
-                            echo "<pre>Свойства: ";
-                            print_r($arProps);
-                            echo "</pre>";
-                            
-                            CIBlockElement::SetPropertyValuesEx($resE["ID"], $iblockId, $arProps);
-                            
-                            // Проверяем после установки - проверяем каждое свойство отдельно
-                            echo "Проверка сохранения свойств:<br>";
-                            
-                            // Проверка свойства DOCS
-                            $dbProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "DOCS"]);
-                            echo "Свойство DOCS:<br>";
-                            while($prop = $dbProps->Fetch()) {
-                                echo "ID: {$prop["ID"]}, VALUE: {$prop["VALUE"]}, DESCRIPTION: {$prop["DESCRIPTION"]}<br>";
-                            }
-                            
-                            // Проверка свойства CERTIFICATE
-                            $dbProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "CERTIFICATE"]);
-                            echo "Свойство CERTIFICATE:<br>";
-                            while($prop = $dbProps->Fetch()) {
-                                echo "ID: {$prop["ID"]}, VALUE: {$prop["VALUE"]}, DESCRIPTION: {$prop["DESCRIPTION"]}<br>";
-                            }
-                        }
-                    }
-                } else {
-                   
-                    if(!$el->Add($arLoad)) {
-                        trigger_error(
-                            "Ошибка добавления товара {$name}: ".$el->LAST_ERROR,
                             E_USER_WARNING
                         );
                     }

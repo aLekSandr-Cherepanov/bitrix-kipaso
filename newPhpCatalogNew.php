@@ -306,7 +306,7 @@ function importProducts() {
                 $arProps = [];
                 
                 
-                /* обработка документов
+                // обработка документов
                 if(isset($p->docs)) {
                     
                     $docsCount = count($p->docs->children());
@@ -352,11 +352,11 @@ function importProducts() {
                     }
                     
                     if(!empty($certsArray)) {
-                        $arProps['CERTIFICATE'] = $certsArray;
+                        $arProps['SERT'] = $certsArray;
                     } else {
                     }
                 }
-                */
+                
 
                 // Добавляем свойства из $propertyValues в $arProps
                 if (!empty($propertyValues)) {
@@ -432,7 +432,7 @@ function importProducts() {
                             }
                             
                             
-                            $dbProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "CERTIFICATE"]);
+                            $dbProps = CIBlockElement::GetProperty($iblockId, $resE["ID"], [], ["CODE" => "SERT"]);
                             while($prop = $dbProps->Fetch()) {
                                 
                                 if($prop["VALUE"]) {

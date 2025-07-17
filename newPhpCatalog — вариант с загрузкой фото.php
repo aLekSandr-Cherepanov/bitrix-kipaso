@@ -92,8 +92,7 @@ function importProducts() {
             foreach($sub->products->product as $p) {
                 $xmlId      = (string)$p->id;
                 $name       = (string)$p->name;
-                $previewText= (string)$p->desc;
-                $detailText = (string)$p->desc;   
+                $previewText= (string)$p->desc;   
                 $imgUrl     = (string)$p->image;
 
                 // 3) Загружаем картинку

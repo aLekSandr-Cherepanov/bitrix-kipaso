@@ -420,12 +420,29 @@ function addProduct($data) {
         "PROPERTY_VALUES" => $data["PROPERTY_VALUES"]
     );
     
+    // Очищаем предыдущие изображения, чтобы избежать конфликтов
     if (isset($data["PREVIEW_PICTURE"]) && $data["PREVIEW_PICTURE"]) {
-        $arLoadProductArray["PREVIEW_PICTURE"] = $data["PREVIEW_PICTURE"];
+        // Проверяем, что это числовой ID изображения
+        if (is_numeric($data["PREVIEW_PICTURE"])) {
+            $arLoadProductArray["PREVIEW_PICTURE"] = CFile::MakeFileArray($data["PREVIEW_PICTURE"]);
+            logMessage("Используем ID для превью изображения: {$data["PREVIEW_PICTURE"]}");
+        } else {
+            // Если это массив файла, используем его напрямую
+            $arLoadProductArray["PREVIEW_PICTURE"] = $data["PREVIEW_PICTURE"];
+            logMessage("Используем массив для превью изображения");
+        }
     }
     
     if (isset($data["DETAIL_PICTURE"]) && $data["DETAIL_PICTURE"]) {
-        $arLoadProductArray["DETAIL_PICTURE"] = $data["DETAIL_PICTURE"];
+        // Проверяем, что это числовой ID изображения
+        if (is_numeric($data["DETAIL_PICTURE"])) {
+            $arLoadProductArray["DETAIL_PICTURE"] = CFile::MakeFileArray($data["DETAIL_PICTURE"]);
+            logMessage("Используем ID для детального изображения: {$data["DETAIL_PICTURE"]}");
+        } else {
+            // Если это массив файла, используем его напрямую
+            $arLoadProductArray["DETAIL_PICTURE"] = $data["DETAIL_PICTURE"];
+            logMessage("Используем массив для детального изображения");
+        }
     }
     
     // Добавляем товар
@@ -497,7 +514,28 @@ function updateProduct($productId, $data) {
     );
     
     if (isset($data["PREVIEW_PICTURE"]) && $data["PREVIEW_PICTURE"]) {
-        $arLoadProductArray["PREVIEW_PICTURE"] = $data["PREVIEW_PICTURE"];
+        // Проверяем, что это числовой ID изображения
+        if (is_numeric($data["PREVIEW_PICTURE"])) {
+            $arLoadProductArray["PREVIEW_PICTURE"] = CFile::MakeFileArray($data["PREVIEW_PICTURE"]);
+            logMessage("Используем ID для обновления превью изображения: {$data["PREVIEW_PICTURE"]}");
+        } else {
+            // Если это массив файла, используем его напрямую
+            $arLoadProductArray["PREVIEW_PICTURE"] = $data["PREVIEW_PICTURE"];
+            logMessage("Используем массив для обновления превью изображения");
+        }
+    }
+    
+    // Добавляем детальное изображение, которого не хватало в оригинальном коде
+    if (isset($data["DETAIL_PICTURE"]) && $data["DETAIL_PICTURE"]) {
+        // Проверяем, что это числовой ID изображения
+        if (is_numeric($data["DETAIL_PICTURE"])) {
+            $arLoadProductArray["DETAIL_PICTURE"] = CFile::MakeFileArray($data["DETAIL_PICTURE"]);
+            logMessage("Используем ID для обновления детального изображения: {$data["DETAIL_PICTURE"]}");
+        } else {
+            // Если это массив файла, используем его напрямую
+            $arLoadProductArray["DETAIL_PICTURE"] = $data["DETAIL_PICTURE"];
+            logMessage("Используем массив для обновления детального изображения");
+        }
     }
     
     // Обновляем товар
@@ -747,19 +785,42 @@ if (isset($xml->products->product)) {
         // Обрабатываем изображения согласно полученному совету
         
         // Основное изображение
+        $mainImageUrl = "";
+        
+        // Сначала пытаемся получить изображение из тега <image>
         if (isset($item->image)) {
             $attrs = $item->image->attributes();
             $imageUrl = (string)$attrs->src;
             
+            if (!empty($imageUrl)) {
+                $mainImageUrl = $imageUrl;
+                echo "<pre>URL основного изображения из тега &lt;image&gt;: {$mainImageUrl}</pre>";
+                logMessage("Найдено основное изображение из тега <image>: $mainImageUrl");
+            }
+        }
+        
+        // Если основное изображение отсутствует, берем первое из тега <images>
+        if (empty($mainImageUrl) && isset($item->images) && $item->images->count() > 0) {
+            $additionalImages = $item->images->children();
+            if (count($additionalImages) > 0) {
+                $firstImage = $additionalImages[0];
+                $attrs = $firstImage->attributes();
+                $mainImageUrl = (string)$attrs->src;
+                echo "<pre>Основное изображение из тега &lt;image&gt; отсутствует, используем первое из &lt;images&gt;: {$mainImageUrl}</pre>";
+                logMessage("Основное изображение из тега <image> отсутствует, используем первое из <images>: $mainImageUrl");
+            }
+        }
+        
+        // Если есть изображение, обрабатываем его
+        if (!empty($mainImageUrl)) {
             // Заменяем поддомен meyertec.owen.ru на owen.ru для прямого доступа к изображению
-            $directImageUrl = str_replace('https://meyertec.owen.ru/', 'https://owen.ru/', $imageUrl);
+            $directImageUrl = str_replace('https://meyertec.owen.ru/', 'https://owen.ru/', $mainImageUrl);
             
-            echo "<pre>URL основного изображения: {$imageUrl}</pre>";
-            echo "<pre>Прямой URL изображения: {$directImageUrl}</pre>";
+            echo "<pre>Прямой URL основного изображения: {$directImageUrl}</pre>";
             
             // Используем прямой URL для скачивания
             $imageUrl = $directImageUrl;
-            logMessage("Найдено основное изображение: $imageUrl");
+            logMessage("Обрабатываем основное изображение: $imageUrl");
             
             if (!empty($imageUrl)) {
                 // Явно скачиваем во временный файл для надежности

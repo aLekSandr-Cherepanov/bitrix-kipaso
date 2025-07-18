@@ -122,7 +122,6 @@ function importProducts() {
                     "ACTIVE"            => "Y",
                     "IBLOCK_SECTION_ID" => $sectionId,
                     "PREVIEW_TEXT"      => $previewText,
-                    "DETAIL_TEXT"       => $detailText,
                     "PREVIEW_PICTURE"   => $fileArray,
                     "DETAIL_PICTURE"    => $fileArray,
                     "PROPERTY_VALUES"   => [

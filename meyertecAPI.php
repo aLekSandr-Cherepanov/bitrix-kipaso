@@ -40,41 +40,15 @@ try {
 // Настройки
 $XML_URL = "https://meyertec.owen.ru/export/catalog.xml?host=owen.kipaso.ru&key=afOavhVgttik-rIgesgbk6Zkk-Y_by8W";
 
-// Попытка определить ID инфоблока каталога товаров
-$res = CIBlock::GetList(
-    array(),
-    array('TYPE' => 'catalog', 'SITE_ID' => SITE_ID),
-    true
-);
-if ($ar_res = $res->Fetch()) {
-    $IBLOCK_ID = $ar_res['ID'];
-    $SECTION_IBLOCK_ID = $ar_res['ID'];
-} else {
-    // Если не найден, установим стандартные для торгового каталога
-    $IBLOCK_ID = 2; // Типичный ID для торгового каталога
-    $SECTION_IBLOCK_ID = 2;
-}
+
+// Жёстко задаём наш инфоблок а не ищем как было до этого
+$IBLOCK_ID         = 16;
+$SECTION_IBLOCK_ID = 16;
+
 
 // Путь к логам
-try {
-    // Попытка определить корневую директорию сайта
-    if (!empty($_SERVER["DOCUMENT_ROOT"])) {
-        $LOG_FILE = $_SERVER["DOCUMENT_ROOT"] . "/meyertec_import_log.txt";
-    } else {
-        // Резервный путь - текущая директория
-        $LOG_FILE = dirname(__FILE__) . "/meyertec_import_log.txt";
-    }
-    
-    // Проверяем возможность записи в директорию
-    $logDir = dirname($LOG_FILE);
-    if (!is_dir($logDir) || !is_writable($logDir)) {
-        // Если директория недоступна для записи, пишем во временную директорию
-        $LOG_FILE = sys_get_temp_dir() . "/meyertec_import_log.txt";
-    }
-} catch (Exception $e) {
-    // В случае ошибки используем текущую директорию
-    $LOG_FILE = dirname(__FILE__) . "/meyertec_import_log.txt";
-}
+// Жёстко задаём путь к файлу логов в корне сайта
+$LOG_FILE = $_SERVER["DOCUMENT_ROOT"] . "/meyertec_import_log.txt";
 
 // Логирование
 function logMessage($message) {

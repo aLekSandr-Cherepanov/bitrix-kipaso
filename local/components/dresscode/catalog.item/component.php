@@ -288,6 +288,60 @@ if (
 			}
 
 			$arElement["SKU_INFO"] = $arOffersSkuInfo;
+			$baseCurrency = CCurrency::GetBaseCurrency();
+			$minPriceValueProp = !empty($arElement["PROPERTIES"]["MINIMUM_PRICE"]["VALUE"]) ? (float)$arElement["PROPERTIES"]["MINIMUM_PRICE"]["VALUE"] : 0;
+			if($minPriceValueProp > 0 && !empty($arElement["PRICE"])){
+				$minPriceToShow = $minPriceValueProp;
+				if(!empty($opCurrency) && !empty($baseCurrency) && $opCurrency != $baseCurrency){
+					$minPriceToShow = CCurrencyRates::ConvertCurrency($minPriceToShow, $baseCurrency, $opCurrency);
+				}
+				$arElement["PRICE"]["DISCOUNT_PRICE"] = $minPriceToShow;
+				$arElement["PRICE"]["RESULT_PRICE"]["BASE_PRICE"] = $minPriceToShow;
+				$arElement["PRICE"]["RESULT_PRICE"]["CURRENCY"] = !empty($opCurrency) ? $opCurrency : $baseCurrency;
+				$arElement["PRICE"]["DISCOUNT"] = 0;
+				$arElement["PRICE"]["COUNT_PRICES"] = 1;
+				$arElement["EXTRA_SETTINGS"]["COUNT_PRICES"] = 1;
+				$arElement["EXTRA_SETTINGS"]["CURRENCY"] = !empty($opCurrency) ? $opCurrency : $baseCurrency;
+			}
+			elseif(!empty($arElement["SKU_INFO"]["IBLOCK_ID"]) && !empty($arElement["SKU_INFO"]["SKU_PROPERTY_ID"])){
+				$minOfferPrice = false;
+				$rsOffers = CIBlockElement::GetList(
+					array(),
+					array(
+						"IBLOCK_ID" => $arElement["SKU_INFO"]["IBLOCK_ID"],
+						"PROPERTY_".$arElement["SKU_INFO"]["SKU_PROPERTY_ID"] => $opProductId,
+						"ACTIVE" => "Y"
+					),
+					false,
+					false,
+					array("ID", "IBLOCK_ID")
+				);
+				while($arOffer = $rsOffers->Fetch()){
+					$arOfferPrice = DwPrices::getPricesByProductId(
+						$arOffer["ID"],
+						!empty($arElement["PRODUCT_PRICE_ALLOW"]) ? $arElement["PRODUCT_PRICE_ALLOW"] : array(),
+						!empty($arElement["PRODUCT_PRICE_ALLOW_FILTER"]) ? $arElement["PRODUCT_PRICE_ALLOW_FILTER"] : array(),
+						$arParams["PRODUCT_PRICE_CODE"],
+						$arOffer["IBLOCK_ID"],
+						$opCurrency
+					);
+					if(isset($arOfferPrice["DISCOUNT_PRICE"])){
+						$offerPriceValue = (float)$arOfferPrice["DISCOUNT_PRICE"];
+						if($minOfferPrice === false || $offerPriceValue < $minOfferPrice){
+							$minOfferPrice = $offerPriceValue;
+						}
+					}
+				}
+				if($minOfferPrice !== false && !empty($arElement["PRICE"])){
+					$arElement["PRICE"]["DISCOUNT_PRICE"] = $minOfferPrice;
+					$arElement["PRICE"]["RESULT_PRICE"]["BASE_PRICE"] = $minOfferPrice;
+					$arElement["PRICE"]["RESULT_PRICE"]["CURRENCY"] = !empty($opCurrency) ? $opCurrency : $baseCurrency;
+					$arElement["PRICE"]["DISCOUNT"] = 0;
+					$arElement["PRICE"]["COUNT_PRICES"] = 1;
+					$arElement["EXTRA_SETTINGS"]["COUNT_PRICES"] = 1;
+					$arElement["EXTRA_SETTINGS"]["CURRENCY"] = !empty($opCurrency) ? $opCurrency : $baseCurrency;
+				}
+			}
 
 			if (empty($arElement["PICTURE"])) {
 				$arElement["PICTURE"]["src"] = SITE_TEMPLATE_PATH . "/images/empty.svg";
@@ -392,6 +446,58 @@ if (
 				$arElement["IBLOCK_ID"],
 				$opCurrency
 			);
+
+			// Переопределяем отображаемую цену минимальной ценой по всем ТП (или значением свойства MINIMUM_PRICE)
+			$baseCurrency = CCurrency::GetBaseCurrency();
+			$minPriceValueProp = !empty($arElement["PROPERTIES"]["MINIMUM_PRICE"]["VALUE"]) ? (float)$arElement["PROPERTIES"]["MINIMUM_PRICE"]["VALUE"] : 0;
+			if($minPriceValueProp > 0){
+				$minPriceToShow = $minPriceValueProp;
+				if(!empty($opCurrency) && !empty($baseCurrency) && $opCurrency != $baseCurrency){
+					$minPriceToShow = CCurrencyRates::ConvertCurrency($minPriceToShow, $baseCurrency, $opCurrency);
+				}
+				$arElement["PRICE"]["DISCOUNT_PRICE"] = $minPriceToShow;
+				$arElement["PRICE"]["RESULT_PRICE"]["BASE_PRICE"] = $minPriceToShow;
+				$arElement["PRICE"]["RESULT_PRICE"]["CURRENCY"] = !empty($opCurrency) ? $opCurrency : $baseCurrency;
+				$arElement["PRICE"]["DISCOUNT"] = 0;
+				$arElement["PRICE"]["COUNT_PRICES"] = 1;
+			}
+			elseif(!empty($arElement["SKU_INFO"]["IBLOCK_ID"]) && !empty($arElement["SKU_INFO"]["SKU_PROPERTY_ID"])){
+				$minOfferPrice = false;
+				$rsOffers = CIBlockElement::GetList(
+					array(),
+					array(
+						"IBLOCK_ID" => $arElement["SKU_INFO"]["IBLOCK_ID"],
+						"PROPERTY_".$arElement["SKU_INFO"]["SKU_PROPERTY_ID"] => $opProductId,
+						"ACTIVE" => "Y"
+					),
+					false,
+					false,
+					array("ID", "IBLOCK_ID")
+				);
+				while($arOffer = $rsOffers->Fetch()){
+					$arOfferPrice = DwPrices::getPricesByProductId(
+						$arOffer["ID"],
+						$arElement["EXTRA_SETTINGS"]["PRODUCT_PRICE_ALLOW"],
+						$arElement["EXTRA_SETTINGS"]["PRODUCT_PRICE_ALLOW_FILTER"],
+						$arParams["PRODUCT_PRICE_CODE"],
+						$arOffer["IBLOCK_ID"],
+						$opCurrency
+					);
+					if(isset($arOfferPrice["DISCOUNT_PRICE"])){
+						$offerPriceValue = (float)$arOfferPrice["DISCOUNT_PRICE"];
+						if($minOfferPrice === false || $offerPriceValue < $minOfferPrice){
+							$minOfferPrice = $offerPriceValue;
+						}
+					}
+				}
+				if($minOfferPrice !== false){
+					$arElement["PRICE"]["DISCOUNT_PRICE"] = $minOfferPrice;
+					$arElement["PRICE"]["RESULT_PRICE"]["BASE_PRICE"] = $minOfferPrice;
+					$arElement["PRICE"]["RESULT_PRICE"]["CURRENCY"] = !empty($opCurrency) ? $opCurrency : $baseCurrency;
+					$arElement["PRICE"]["DISCOUNT"] = 0;
+					$arElement["PRICE"]["COUNT_PRICES"] = 1;
+				}
+			}
 
 			$arElement["EXTRA_SETTINGS"]["COUNT_PRICES"] = $arElement["PRICE"]["COUNT_PRICES"];
 			$arElement["EXTRA_SETTINGS"]["CURRENCY"] = empty($opCurrency) ? $arElement["PRICE"]["RESULT_PRICE"]["CURRENCY"] : $opCurrency;

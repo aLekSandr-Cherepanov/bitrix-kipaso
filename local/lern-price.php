@@ -29,44 +29,12 @@ if (!Loader::includeModule('iblock') || !Loader::includeModule('catalog')) {
     die ("Не удалось подключить модуль iblock или catalog\n");
 }
 
-/*возможно на удаление*/
-$request = Context::getCurrent()->getRequest();
-$codeRaw = trim((string) $request->getQuery('code'));
-$code = preg_replace('~[^a-zA-Z0-9_-]~', '', $codeRaw);
-
-
-if (PHP_SAPI === 'cli' && empty($argv[1]->$codeRaw = $argv[1])) {
-    $codeRaw = trim((string) $request->getQuery('code'));
-    $code = preg_replace('~[^a-zA-Z0-9_-]~', '', $codeRaw);
-}
-
-
-
-if ($code === '') {
-    die("символьный код не найден");
-}
+$limit = (int)($argv[1] ?? 200);
+$offset = (int)($argv[2] ?? 0);
+echo "limit={$limit}, offset={$offset}\n";
 
 $iblockId = 110;
 
-function ElementIdByCode( string $code, int $iblockId) : int {
-    $productId = ElementTable::getList ([
-        'filter' => [
-            '=IBLOCK_ID' => $iblockId,
-            '=CODE' => $code,
-            '=ACTIVE' => 'Y',
-        ],
-        'select' => ['ID'],
-        'limit' => 1,
-    ])->fetch();
 
-    if (!$productId) {
-        die("Товар с кодом {$code} не найден");
-    }
-    return (int)$productId['ID'];
-}
-$productId = ElementIdByCode($code, $iblockId);
-echo "ID товара: {$productId}<br>";
-
-function CatalogTable()
 
 

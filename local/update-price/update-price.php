@@ -1,9 +1,11 @@
 <?php
 
 use Bitrix\Main\Loader;
+use Bitrix\Catalog\Model\Price;
 use Bitrix\Iblock\ElementTable;
 use Bitrix\Catalog\PriceTable;
 use Bitrix\Catalog\GroupTable;
+use Bitrix\Catalog\Model\Price as CatalogPrice;
 
 $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/'); //пытаемся определить DOCUMENT_ROOT ,если его нет то ищем сами
 if ($docRoot === '') {
@@ -20,6 +22,11 @@ require $prologPath;
 
 if (!Loader::includeModule('iblock') || !Loader::includeModule('catalog')) {
     exit("Не удалось подключить модуль iblock или catalog\n");
+}
+
+$dwDeluxeLoaded = Loader::includeModule('dw.deluxe');
+if (!$dwDeluxeLoaded) {
+    echo "Предупреждение: модуль dw.deluxe не подключен, пересчёт MINIMUM_PRICE/MAXIMUM_PRICE по событиям может не выполниться\n";
 }
 
 
@@ -66,7 +73,6 @@ function findElementIdByCode(string $code, int $iblockId): ?int
         'select' => ['ID'],
         'limit' => 1,
     ])->fetch();
-
     return $row ? (int)$row['ID'] : null;
     
 }
@@ -94,11 +100,11 @@ function getBasePriceTypeId(): int
     return $baseId;
 }
 
-function upsertBasePrice (int $productId, float $price, string $currency = 'RUB'): void
+function upsertBasePrice_Model(int $productId, float $price, string $currency = 'RUB'): void
 {
     $baseType = getBasePriceTypeId();
 
-     // Ищем существующую цену
+    // Ищем существующую цену (читать можно через PriceTable — это ок)
     $existing = PriceTable::getList([
         'filter' => [
             '=PRODUCT_ID' => $productId,
@@ -108,19 +114,33 @@ function upsertBasePrice (int $productId, float $price, string $currency = 'RUB'
         'limit' => 1,
     ])->fetch();
 
-    if ($existing) {
-        // Обновляем
-        PriceTable::update($existing['ID'], [
-            'PRICE' => $price,
-            'CURRENCY' => $currency,
-        ]);
+    $fields = [
+        'PRODUCT_ID' => $productId,
+        'CATALOG_GROUP_ID' => $baseType,
+        'PRICE' => $price,
+        'CURRENCY' => $currency,
+        'QUANTITY_FROM' => null,
+        'QUANTITY_TO' => null,
+        // 'VAT_INCLUDED' => 'Y', // если у вас так принято
+    ];
+
+    if ($existing && !empty($existing['ID'])) {
+
+    // 1) Цена уже существует → делаем UPDATE по её ID
+    $priceId = (int)$existing['ID'];
+
+    $result = Price::update($priceId, $fields);
+
     } else {
-        PriceTable::add([
-            'PRODUCT_ID' => $productId,
-            'CATALOG_GROUP_ID' => $baseType,
-            'PRICE' => $price,
-            'CURRENCY' => $currency,
-        ]);
+
+        // 2) Цены нет → делаем ADD (создаём новую строку цены)
+        $result = Price::add($fields);
+    }
+
+    // 3) Единая проверка результата (и update, и add возвращают Result)
+    if (!$result->isSuccess()) {
+        $errors = $result->getErrorMessages();
+        throw new \RuntimeException('Ошибка сохранения цены: ' . implode('; ', $errors));
     }
 }
 
@@ -133,7 +153,7 @@ foreach ($pricesByIzd as $izd => $price) {
         $missed++;
         continue;
     } 
-    upsertBasePrice($elementId, $price);
+    upsertBasePrice_Model($elementId, $price);
     $updated++;
 }
 

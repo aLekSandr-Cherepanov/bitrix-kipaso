@@ -7,7 +7,7 @@
 				continue;
 		?>
 			<?if($arItem["SELECTED"]):?>
-				<li><a class="selected"><?=$arItem["TEXT"]?></a></li>
+				<li><a href="<?=$arItem["LINK"]?>" class="selected"><?=$arItem["TEXT"]?></a></li>
 			<?else:?>
 				<li><a href="<?=$arItem["LINK"]?>"><?=$arItem["TEXT"]?></a></li>
 			<?endif?>

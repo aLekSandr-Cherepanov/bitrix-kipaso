@@ -9,6 +9,8 @@ $this->addExternalCss($templateFolder . "/css/set.css");
 $this->addExternalCss($templateFolder . "/css/custom.css");
 $this->addExternalCss($templateFolder . "/css/product-modifications.css");
 
+
+$this->addExternalJS($templateFolder . "/js/custom-cor-opicanie.js");
 $this->addExternalJS($templateFolder . "/js/morePicturesCarousel.js");
 $this->addExternalJS($templateFolder . "/js/pictureSlider.js");
 $this->addExternalJS($templateFolder . "/js/zoomer.js");
@@ -250,7 +252,7 @@ if (!empty($arResult["EDIT_LINK"])) {
                                 <? endforeach; ?>
                             <? endif; ?>
                         <? endif; ?>
-                        <div class="changePropertiesNoGroup" style="display: none;">
+                        <!-- <div class="changePropertiesNoGroup" style="display: none;">
                             <? $APPLICATION->IncludeComponent(
                                 "dresscode:catalog.properties.list",
                                 "no-group",
@@ -269,16 +271,21 @@ if (!empty($arResult["EDIT_LINK"])) {
                                     "HIDE_ICONS" => "Y"
                                 )
                             ); ?>
-                        </div>
+                        </div> -->
 
 
                     </div>
                 </div>
+                <!-- Егор временно у товаров с ТП мы убираем smallElementTools точка начала изменений-->
+                <? if (empty($arResult["SKU_OFFERS"])): ?>
                 <div id="smallElementTools">
                     <div class="smallElementToolsContainer">
                         <? include($_SERVER["DOCUMENT_ROOT"] . "/" . $templateFolder . "/include/right_section.php"); ?>
                     </div>
                 </div>
+                <? endif; ?>
+                <!-- Точка конца изменений -->
+
                 <? if ($arParams["DISPLAY_ADVANTAGES"] == "Y" && !empty($arParams["ADVANTAGES_IBLOCK_ID"])): ?>
                     <? $APPLICATION->IncludeComponent(
                         "dresscode:catalog.advantages",
@@ -309,7 +316,7 @@ if (!empty($arResult["EDIT_LINK"])) {
                             ),
                             $component,
                             array(
-                                "ACTIVE_COMPONENT" => "Y",
+                                "ACTIVE_COMPONENT" => "N",
                                 "HIDE_ICONS" => "Y"
                             )
                         ); ?>
@@ -467,12 +474,12 @@ if (!empty($arResult["EDIT_LINK"])) {
                                                         <?= $arNextComplect["PRICE"]["PRICE_FORMATED"] ?>
                                                         <? if ($arParams["HIDE_MEASURES"] != "Y" && !empty($arResult["MEASURES"][$arNextComplect["CATALOG_MEASURE"]]["SYMBOL_RUS"])): ?>
                                                             <span class="measure">
-                                                                /<? if (!empty($arNextComplect["QUANTITY"]) && $arNextComplect["QUANTITY"] != 1): ?>
+                                                                <? if (!empty($arNextComplect["QUANTITY"]) && $arNextComplect["QUANTITY"] != 1): ?>
                                                                     <?= $arNextComplect["QUANTITY"] ?>            <? endif; ?>
                                                                 <?= $arResult["MEASURES"][$arNextComplect["CATALOG_MEASURE"]]["SYMBOL_RUS"] ?></span>
                                                         <? endif; ?>
                                                         <? if ($arNextComplect["PRICE"]["PRICE_DIFF"] > 0): ?>
-                                                            <s
+                                                            <span
                                                                 class="discount"><?= $arNextComplect["PRICE"]["BASE_PRICE_FORMATED"] ?></s>
                                                         <? endif; ?>
                                                     </a>
@@ -628,7 +635,7 @@ if (!empty($arResult["EDIT_LINK"])) {
                                     "CATALOG_VARIABLES" => $arParams["CATALOG_VARIABLES"],
                                     "SECTION_PATH_LIST" => $arResult["SECTION_PATH_LIST"],
                                     "LAST_SECTION" => $arResult["LAST_SECTION"],
-                                    "PRODUCT_ID" => $arResult["ID"]
+                                    "PRODUCT_ID" => $arResult["ID"],
                                 ),
                                 $component,
                                 array(
@@ -656,7 +663,7 @@ if (!empty($arResult["EDIT_LINK"])) {
                         ),
                         $component,
                         array(
-                            "ACTIVE_COMPONENT" => "Y",
+                            "ACTIVE_COMPONENT" => "N",
                             "HIDE_ICONS" => "Y"
                         )
                     ); ?>
@@ -926,8 +933,8 @@ if (!empty($arResult["EDIT_LINK"])) {
                     </div>
                     <!-- Кнопка покупки модификации -->
                     <div class="modification-buy-block" style="display: none; margin-top: 15px;">
-                        <a href="#" class="addCart modificationAddCart modificationCallbackBtn" data-id="" data-modification="" data-price="">
-                            <span class="spanaAddCart" ><img src="<?=SITE_TEMPLATE_PATH?>/images/incart.svg" alt="Купить" class="icon">Купить</span>
+                        <a href="#" class="addCart modificationAddCart" data-id="" data-modification="" data-price="">
+                            <span><img src="<?=SITE_TEMPLATE_PATH?>/images/incart.svg" alt="Купить" class="icon">Купить</span>
                         </a>
                     </div>
                 </div>
@@ -1311,9 +1318,8 @@ if (!empty($arResult["EDIT_LINK"])) {
         elseif (preg_match('/^([a-zA-Z0-9]+)/', $arResult["NAME"], $matches)) {
             $productSku = $matches[1];
         }
-        // Для тестирования используем фиксированный артикул
         else {
-            $productSku = '2trm0'; // Тестовый артикул из JSON
+            $productSku = '';
         }
         ?>
         var productSku = "<?= $productSku ?>";

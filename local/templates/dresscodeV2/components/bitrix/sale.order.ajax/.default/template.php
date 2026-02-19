@@ -200,7 +200,7 @@ if ($useDefaultMessages || !isset($arParams['MESS_NAV_FORWARD']))
 } else {
 	$arParams['MESS_NAV_FORWARD'] = htmlspecialchars_decode($arParams['MESS_NAV_FORWARD']);
 }
-
+// Тут начинается момент который нужен для доставки Егор комментарий для себя
 $useDefaultMessages = !isset($arParams['USE_CUSTOM_ADDITIONAL_MESSAGES']) || $arParams['USE_CUSTOM_ADDITIONAL_MESSAGES'] != 'Y';
 
 if ($useDefaultMessages || !isset($arParams['MESS_PRICE_FREE']))
@@ -209,6 +209,23 @@ if ($useDefaultMessages || !isset($arParams['MESS_PRICE_FREE']))
 } else {
 	$arParams['MESS_PRICE_FREE'] = htmlspecialchars_decode($arParams['MESS_PRICE_FREE']);
 }
+// Добавил вызов текстовых переменных Егор
+if ($useDefaultMessages || !isset($arParams['MESS_PRICE_FREE_INDIVIDUAL'])) {
+	$arParams['MESS_PRICE_FREE_INDIVIDUAL'] = Loc::getMessage('PRICE_FREE_INDIVIDUAL');
+} else {
+	$arParams['MESS_PRICE_FREE_INDIVIDUAL'] = htmlspecialchars_decode($arParams['MESS_PRICE_FREE_INDIVIDUAL']);
+}
+
+if ($useDefaultMessages || !isset($arParams['MESS_PRICE_FREE_PICKUP'])) {
+	$arParams['MESS_PRICE_FREE_PICKUP'] = Loc::getMessage('PRICE_FREE_PICKUP');
+} else {
+	$arParams['MESS_PRICE_FREE_PICKUP'] = htmlspecialchars_decode($arParams['MESS_PRICE_FREE_PICKUP']);
+}
+
+
+
+
+
 
 if ($useDefaultMessages || !isset($arParams['CALCULATE']))
 {

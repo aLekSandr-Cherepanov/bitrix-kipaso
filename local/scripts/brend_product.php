@@ -7,8 +7,8 @@ use Bitrix\Iblock\SectionElementTable;
 
 
 $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/');
-if($docRoot === '') {
-    $resolved = realpath(__DIR__ . '/..');
+if ($docRoot === '') {
+    $resolved = realpath(__DIR__ . '/../..');
     if ($resolved === false || !is_dir($resolved)) {
         exit("Не удалось определить DOCUMENT_ROOT (realpath вернул некорректный путь)\n");
     }
@@ -96,7 +96,6 @@ $productsRes = ElementTable::getList([
     ],
     'select' => ['ID', 'NAME'],
     'order' => ['ID' => 'ASC'],
-    'limit' => 10,
 ]);
 
 while ($p = $productsRes->fetch()) {
@@ -111,16 +110,38 @@ if(empty($activeProducts)) {
 }
 
 
-$brandElementId = 55675;
+$brandElementId = 55674;
 $brandPropertyCode = 'ATT_BRAND';
 
 $updated = 0;
+$skipped = 0;
 $errors = [];
 
 foreach ($activeProducts as $product) {
     $productId = (int)$product['ID'];
     $productName = (string)$product['NAME'];
 
+    // Читаем текущее значение свойства
+    $currentBrand = \CIBlockElement::GetProperty(
+        $iblockIdProducts,
+        $productId,
+        [],
+        ['CODE' => $brandPropertyCode]
+    )->Fetch();
+
+    $currentBrandId = 0;
+    if ($currentBrand && !empty($currentBrand['VALUE'])) {
+        $currentBrandId = (int)$currentBrand['VALUE'];
+    }
+
+    // Если бренд уже заполнен — пропускаем
+    if ($currentBrandId > 0) {
+        $skipped++;
+        echo "SKIP: product_id={$productId} | {$productName} - уже стоит {$brandPropertyCode}={$currentBrandId}\n";
+        continue;
+    }
+
+    // Если бренд пустой — записываем
     \CIBlockElement::SetPropertyValuesEx(
         $productId,
         $iblockIdProducts,
@@ -131,5 +152,6 @@ foreach ($activeProducts as $product) {
     echo "OK: product_id={$productId} | {$productName} -> {$brandPropertyCode}={$brandElementId}\n";
 }
 
-echo "Готово. Обновлено: {$updated}, ошибок: " . count($errors) . "\n";
+echo "Готово. Обновлено: {$updated}, пропущено: {$skipped}, ошибок: " . count($errors) . "\n";
+echo "Найдено активных товаров: " . count($activeProducts) . "\n";
 exit;

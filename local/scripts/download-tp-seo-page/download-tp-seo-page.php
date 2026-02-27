@@ -74,7 +74,8 @@ foreach ($productNodes as $productNode) {
 }
 
 // второй xml с базой для сравнения
-$xmlPathBase = $docRoot . 'owenkomplekt_izmeriteli_regulyatory.xml';
+$xmlPathBase = $docRoot . '/local/owenkomplekt_izmeriteli_regulyatory.xml';
+
 if (!file_exists($xmlPathBase)) {
     exit("Не найден файл XML по пути: {$xmlPathBase}\n");
 }
@@ -98,16 +99,81 @@ foreach ($productBaseNodes as $productBaseNode) {
 
     $name = trim((string)$productBaseNode->name);
     $short = trim((string)$productBaseNode->short_description);
-    $imageUrl = trim((string)$productBaseNode->images->image);
+    $imageUrl = '';
+    if (isset($productBaseNode->images->image[0])) {
+        $imageUrl = trim((string)$productBaseNode->images->image[0]);
+    }
 
     $baseByArticle[$article] = [
         'name' => $name,
         'short_description' => $short,
         'image' => $imageUrl,
     ];
-        
+}
 
-    
+
+function normalizeArticleKey(string $article): string
+{
+    return trim($article);
+}
+
+function isNumericArticle(string $article): bool
+{
+    return (bool)preg_match('~^\d+$~', $article);
+}
+
+$matched = 0;
+$missedNumeric = [];
+$missedNonNumeric = [];
+$readyByArticle = [];
+
+foreach ($baseByArticle as $articleRaw => $base) {
+    $article = normalizeArticleKey($articleRaw);
+
+    // если артикул не числовой — пропускаем (в catalogOven izd_code числовые)
+    if (!isNumericArticle($article)) {
+        $missedNonNumeric[] = $articleRaw;
+        continue;
+    }
+
+    // строгое совпадение "цифра в цифру"
+    if (!isset($supplierByArticle[$article])) {
+        $missedNumeric[] = $articleRaw;
+        continue;
+    }
+
+    $supplier = $supplierByArticle[$article];
+
+    // DETAIL_TEXT: short_description -> desc
+    $short = trim($base['short_description'] ?? '');
+    $desc  = trim($supplier['desc'] ?? '');
+
+    $detailHtml = '';
+    if ($short !== '') $detailHtml .= '<div class="seo-short">' . $short . '</div>' . PHP_EOL;
+    if ($desc  !== '') $detailHtml .= '<div class="seo-desc">' . $desc . '</div>' . PHP_EOL;
+
+    $readyByArticle[$article] = [
+        'name'                => $base['name'] ?? '',
+        'xml_id'              => (string)$article,
+        'detail_html'         => $detailHtml,
+        'specifications_html' => (string)($supplier['specs'] ?? ''),
+        'price'               => (string)($supplier['price'] ?? ''),
+        'docs'                => $supplier['docs'] ?? null,
+        'image_url'           => $base['image'] ?? '',
+    ];
+
+    $matched++;
+}
+
+echo "совпадение: {$matched}\n";
+echo "пропущенное числовое значение: " . count($missedNumeric) . "\n";
+echo "пропущено нечисловое значение: " . count($missedNonNumeric) . "\n";
+
+if (!empty($missedNumeric)) {
+    echo "Примеры числовое значение без совпадения: " . implode(', ', array_slice($missedNumeric, 0, 20)) . "\n";
+}
+if (!empty($missedNonNumeric)) {
+    echo "Примеры нечисловое значение (пропущены): " . implode(', ', array_slice($missedNonNumeric, 0, 20)) . "\n";
 }
 
 

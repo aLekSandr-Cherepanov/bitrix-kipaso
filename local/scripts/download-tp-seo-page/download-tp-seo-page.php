@@ -5,8 +5,9 @@ use Bitrix\Iblock\ElementTable;
 use Bitrix\Iblock\SectionTable;
 
 $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/');
+
 if ($docRoot === '') {
-    $resolved = realpath(__DIR__ . '/../..');
+    $resolved = realpath(__DIR__ . '/../../..');
     if ($resolved === false || !is_dir($resolved)) {
         exit("Не удалось определить DOCUMENT_ROOT (realpath вернул некорректный путь)\n");
     }
@@ -52,9 +53,9 @@ if (!$productNodes) {
 
 foreach ($productNodes as $productNode) {
 
-    $desc  = (string)$productNode->desc;   // CDATA HTML
-    $specs = (string)$productNode->specs;  // CDATA HTML
-    $docs  = $productNode->docs;           // узел, позже решим формат
+    $desc  = (string)$productNode->desc;  
+    $specs = (string)$productNode->specs;  
+    $docs  = $productNode->docs;          
 
     // проход по модификациям
     foreach ($productNode->prices->price as $priceNode) {
@@ -67,15 +68,52 @@ foreach ($productNodes as $productNode) {
             'price' => $priceVal,
             'desc'  => $desc,
             'specs' => $specs,
-            'docs'  => $docs, // пока SimpleXMLElement
-            // опционально: имя модификации из catalogOven
-            // 'mod_name' => trim((string)$priceNode->name),
+            'docs'  => $docs,
         ];
     }
 }
 
-echo "catalogOven.xml: собрано модификаций по izd_code = " . count($supplierByArticle) . PHP_EOL;
+// второй xml с базой для сравнения
+$xmlPathBase = $docRoot . 'owenkomplekt_izmeriteli_regulyatory.xml';
+if (!file_exists($xmlPathBase)) {
+    exit("Не найден файл XML по пути: {$xmlPathBase}\n");
+}
 
-// (необязательно) Быстрый тест: вывести 3 ключа
-$keys = array_slice(array_keys($supplierByArticle), 0, 3);
-echo "Примеры izd_code: " . implode(', ', $keys) . PHP_EOL;
+$xmlBase = @simplexml_load_file($xmlPathBase);
+if ($xmlBase === false) {
+    exit("Не удалось загрузить XML файл: {$xmlPathBase}\n");
+}
+
+$baseByArticle = [];
+
+$productBaseNodes = $xmlBase->xpath('//product[article]');
+
+if (!$productBaseNodes) {
+    exit("В owenkomplekt_izmeriteli_regulyatory.xml не найдены <product> с article. Проверь структуру.\n");
+}
+
+foreach ($productBaseNodes as $productBaseNode) {
+    $article = trim((string)$productBaseNode->article);
+    if ($article === '') continue;
+
+    $name = trim((string)$productBaseNode->name);
+    $short = trim((string)$productBaseNode->short_description);
+    $imageUrl = trim((string)$productBaseNode->images->image);
+
+    $baseByArticle[$article] = [
+        'name' => $name,
+        'short_description' => $short,
+        'image' => $imageUrl,
+    ];
+        
+
+    
+}
+
+
+
+
+echo "owenkomplekt.xml: собрано товаров по article = " . count($baseByArticle) . PHP_EOL;
+
+$keys2 = array_slice(array_keys($baseByArticle), 0, 3);
+echo "Примеры article: " . implode(', ', $keys2) . PHP_EOL;

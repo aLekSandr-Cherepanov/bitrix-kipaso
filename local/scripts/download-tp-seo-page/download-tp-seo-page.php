@@ -36,18 +36,27 @@ if (!Loader::includeModule('catalog')) {
 
 $iblockId = 16; // ID инфоблока с товарами
 
-$docsPropRow = CIBlockProperty::GetList([], ['IBLOCK_ID' => $iblockId, '=CODE' => 'DOCS'])->Fetch();
+$docsPropRow = CIBlockProperty::GetList(
+    [], 
+    [
+        'IBLOCK_ID' => $iblockId, 
+        '=CODE' => 'DOCS'
+    ]
+)->Fetch();
 $docsPropId = (int)($docsPropRow['ID'] ?? 0);
 
 $iblockVersion = (int)CIBlock::GetArrayByID($iblockId, 'VERSION');
 
 $manufacturerElementId = 55675;
 $manufacturerPropCode = 'ATT_BRAND';
-$manufacturerPropRow = CIBlockProperty::GetList([], [
-    'IBLOCK_ID' => $iblockId,
-    'ACTIVE' => 'Y',
-    '=CODE' => $manufacturerPropCode,
-])->Fetch();
+$manufacturerPropRow = CIBlockProperty::GetList(
+    [],
+    [
+        'IBLOCK_ID' => $iblockId,
+        'ACTIVE' => 'Y',
+        '=CODE' => $manufacturerPropCode,
+    ]
+)->Fetch();
 
 $manufacturerPropId = (int)($manufacturerPropRow['ID'] ?? 0);
 

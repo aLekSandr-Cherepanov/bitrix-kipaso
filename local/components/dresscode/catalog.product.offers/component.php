@@ -30,7 +30,8 @@ $cacheID = array(
 	"CURRENCY_ID" => $arParams["CURRENCY_ID"],
 	"PAGER_NUM" => $arParams["PAGER_NUM"],
 	"USER_GROUPS" => $USER->GetGroups(),
-	"SITE_ID" => SITE_ID
+	"SITE_ID" => SITE_ID,
+	"COMPONENT_REV" => "offer_details_url_v2"
 );
 
 if ($this->StartResultCache($arParams["CACHE_TIME"], serialize($cacheID))) {
@@ -66,7 +67,7 @@ if ($this->StartResultCache($arParams["CACHE_TIME"], serialize($cacheID))) {
 			),
 			false,
 			false,
-			array("ID", "IBLOCK_ID", "NAME", "DETAIL_PICTURE")
+			array("ID", "IBLOCK_ID", "NAME", "DETAIL_PICTURE", "DETAIL_PAGE_URL")
 		);
 
 		if ($arParentProduct = $rsProduct->GetNext()) {

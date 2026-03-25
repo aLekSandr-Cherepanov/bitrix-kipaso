@@ -1284,6 +1284,9 @@ $(window).on("ready", function (event) {
 
 	var addCart = function (event) {
 		var $this = $(this);
+		if ($this.hasClass("offerDetails")) {
+			return true;
+		}
 		var $quantityContainer = $this.siblings(".quantityContainer");
 		var $quantityField = $quantityContainer.find(".quantity");
 		var productID = $this.data("id");

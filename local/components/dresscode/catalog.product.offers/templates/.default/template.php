@@ -23,7 +23,7 @@
 								<div class="tb">
 									
 									<div class="tc priceWrap"><?=GetMessage("OFFERS_PRICE_COLUMN")?></div>
-									<div class="tc basket"><?=GetMessage("OFFERS_ADD_CART_COLUMN")?></div>
+									<div class="tc basket">Подробнее</div>
 								</div>
 							</div>
 						</div>
@@ -56,10 +56,46 @@
 							});
 						}
 						?>
-						<?foreach ($arResult["ITEMS"] as $inx => $arNextElement):?>
+							<?foreach ($arResult["ITEMS"] as $inx => $arNextElement):?>
 							<?
 								$this->AddEditAction("offers_".$arNextElement["ID"], $arNextElement["EDIT_LINK"], CIBlock::GetArrayByID($arParams["IBLOCK_ID"], "ELEMENT_EDIT"));
 								$this->AddDeleteAction("offers_".$arNextElement["ID"], $arNextElement["DELETE_LINK"], CIBlock::GetArrayByID($arParams["IBLOCK_ID"], "ELEMENT_DELETE"), array());
+
+								$posadValue = $arNextElement["PROPERTIES"]["URL_POSAD"]["VALUE"] ?? "";
+								if (is_array($posadValue)) {
+									$posadValue = reset($posadValue);
+								}
+								$posadValue = trim((string)$posadValue);
+								$offerDetailsUrl = "";
+
+								if ($posadValue !== "") {
+									if (preg_match("~^https?://~i", $posadValue) || strpos($posadValue, "//") === 0) {
+										$offerDetailsUrl = $posadValue;
+									} elseif (substr($posadValue, 0, 1) === "/") {
+										$offerDetailsUrl = $posadValue;
+									} else {
+										$parentUrl = (string)($arResult["PARENT_PRODUCT"]["DETAIL_PAGE_URL"] ?? "");
+										$parentUrl = preg_replace("~[?#].*$~", "", $parentUrl);
+										$parentDir = rtrim(dirname($parentUrl), "/");
+										if ($parentDir === ".") {
+											$parentDir = "";
+										}
+
+										$parentExt = pathinfo($parentUrl, PATHINFO_EXTENSION);
+										$posadExt = pathinfo($posadValue, PATHINFO_EXTENSION);
+										$posadFile = ($posadExt !== "") ? $posadValue : ($posadValue . (!empty($parentExt) ? ("." . $parentExt) : ""));
+
+										if ($parentDir !== "") {
+											$offerDetailsUrl = $parentDir . "/" . $posadFile;
+										} else {
+											$offerDetailsUrl = "/" . $posadFile;
+										}
+									}
+								}
+
+								if ($offerDetailsUrl === "") {
+									$offerDetailsUrl = (string)($arNextElement["DETAIL_PAGE_URL"] ?? "");
+								}
 							?>
 							<div class="tableElem" id="<?=$this->GetEditAreaId("offers_".$arNextElement["ID"]);?>" data-offer-image="<?=htmlspecialcharsbx($arNextElement["PICTURE"]["src"])?>">
 								<div class="tb">
@@ -119,19 +155,7 @@
 										<?endif;?>
 									</div>
 											<div class="tc basket">
-												<?if(!empty($arNextElement["PRICE"])):?>
-													<?if($arNextElement["CATALOG_AVAILABLE"] != "Y"):?>
-														<?if($arNextElement["CATALOG_SUBSCRIBE"] == "Y"):?>
-															<a href="#" class="addCart subscribe" data-id="<?=$arNextElement["ID"]?>" data-quantity="<?=$arNextElement["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><?=GetMessage("PRODUCT_SUBSCRIBE_LABEL")?></a>
-														<?else:?>
-															<a href="#" class="addCart disabled" data-id="<?=$arNextElement["ID"]?>" data-quantity="<?=$arNextElement["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><?=GetMessage("ADDCART_LABEL")?></a>															
-														<?endif;?>
-													<?else:?>
-														<a href="#" class="addCart" data-id="<?=$arNextElement["ID"]?>" data-quantity="<?=$arNextElement["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><?=GetMessage("ADDCART_LABEL")?></a>														
-													<?endif;?>
-												<?else:?>
-													<a href="#" class="addCart disabled requestPrice" data-id="<?=$arNextElement["ID"]?>" data-quantity="<?=$arNextElement["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><?=GetMessage("OFFERS_REQUEST_PRICE_BUTTON_LABEL")?></a>
-												<?endif;?>
+												<a href="<?=htmlspecialcharsbx($offerDetailsUrl)?>" class="addCart offerDetails" target="_blank" rel="noopener noreferrer">Подробнее</a>
 											</div>
 										</div>
 									</div>
@@ -165,8 +189,13 @@
 								return; // клик не по строке оффера
 							}
 
+							var clickedLink = e.target && e.target.closest ? e.target.closest('a') : null;
+							if(clickedLink && clickedLink.classList && clickedLink.classList.contains('offerDetails')){
+								return; // разрешаем обычный переход по ссылке "Подробнее"
+							}
+
 							// Блокируем переходы по большинству ссылок внутри строки, кроме окон цен
-							if(e.target.tagName === 'A' && e.target.classList.contains('getPricesWindow') === false){
+							if(clickedLink && clickedLink.classList && clickedLink.classList.contains('getPricesWindow') === false){
 								e.preventDefault();
 							}
 

@@ -36,13 +36,26 @@ if (!Loader::includeModule('catalog')) {
 
 $iblockId = 16; // ID инфоблока с товарами
 
+// Инфоблок офферов (торговые предложения)
+$offersIblockId = 17;
+$offerUrlPropCode = 'URL_POSAD';
+$offerUrlPropId = 0;
+
+$offerUrlPropRow = CIBlockProperty::GetList(
+    [],
+     [
+        'IBLOCK_ID' => $offersIblockId,
+        '=CODE' => $offerUrlPropCode,
+    ])->Fetch();
+
+$offerUrlPropId = (int)($offerUrlPropRow['ID'] ?? 0);
+
 $docsPropRow = CIBlockProperty::GetList(
-    [], 
+    [],
     [
-        'IBLOCK_ID' => $iblockId, 
-        '=CODE' => 'DOCS'
-    ]
-)->Fetch();
+        'IBLOCK_ID' => $iblockId,
+        '=CODE' => 'DOCS',
+    ])->Fetch();
 $docsPropId = (int)($docsPropRow['ID'] ?? 0);
 
 $iblockVersion = (int)CIBlock::GetArrayByID($iblockId, 'VERSION');
@@ -50,13 +63,12 @@ $iblockVersion = (int)CIBlock::GetArrayByID($iblockId, 'VERSION');
 $manufacturerElementId = 55675;
 $manufacturerPropCode = 'ATT_BRAND';
 $manufacturerPropRow = CIBlockProperty::GetList(
-    [],
+    [], 
     [
         'IBLOCK_ID' => $iblockId,
         'ACTIVE' => 'Y',
         '=CODE' => $manufacturerPropCode,
-    ]
-)->Fetch();
+    ])->Fetch();
 
 $manufacturerPropId = (int)($manufacturerPropRow['ID'] ?? 0);
 
@@ -68,7 +80,7 @@ if (!$vatRow) {
     //
 }
 
-$targetCategoryId = 'izmeriteli_regulyatori';// фильтруем по категории
+$targetCategoryId = 'izmeriteli_regulyatori';
 
 $xmlPath = $docRoot . '/catalogOven.xml';
 if (!file_exists($xmlPath)) {
@@ -83,7 +95,7 @@ if ($xml === false) {
 $supplierByArticle = [];
 
 $productNodes = $xml->xpath(sprintf(
-    '//categories//item[id="%s"]/products/product[prices/price/izd_code]'// было product[prices/price/izd_code]
+    '//categories//item[id="%s"]/products/product[prices/price/izd_code]'
     , $targetCategoryId
 ));
 
@@ -245,6 +257,7 @@ function importAddError(string $message, string $bucket = 'errors'): void
 
 const PROP_SPECS = 'SPECIFICATIONS_TEXT';
 
+// Функция для загрузки изображения по URL во временную папку и возвращающая массив для сохранения в инфоблоке
 function downloadToTemp(string $url): ?array {
     $url = trim($url);
     if ($url === '') return null;
@@ -508,7 +521,6 @@ foreach ($readyByArticle as $key => $data) {
         $ok = $el->Update($found['ID'], $fields);
         if (!$ok) {
             importAddError("ОБНОВЛЕНИЕ: ошибка xml_id={$xmlId} | {$el->LAST_ERROR}");
-            continue;
         }
 
         CIBlockElement::SetPropertyValuesEx($found['ID'], $iblockId, $props);
@@ -537,6 +549,48 @@ foreach ($readyByArticle as $key => $data) {
             ensureProductVat($elementId, $vatId);
         } catch (\Throwable $e) {
             importAddError('НДС: ошибка: ' . $e->getMessage(), 'vat_errors');
+        }
+    }
+
+    // Символьный код посадочной
+    $productCodeForOffer = '';
+    $codeRow = ElementTable::getList([
+        'filter' => [
+            '=ID' => $elementId,
+        ],
+        'select' => ['CODE'],
+        'limit' => 1,
+    ])->fetch();
+    if ($codeRow) {
+        $productCodeForOffer = (string)($codeRow['CODE'] ?? '');
+    }
+
+    if ($offersIblockId > 0 && $offerUrlPropId > 0 && $productCodeForOffer !== '') {
+        // Ищем оффер по его собственному CODE
+        $offerIds = [];
+        $rsOffers = CIBlockElement::GetList(
+            [],
+            [
+                'IBLOCK_ID' => $offersIblockId,
+                [
+                    'LOGIC' => 'OR',
+                    ['=CODE' => (string)$xmlId],
+                    ['=XML_ID' => (string)$xmlId],
+                ],
+            ],
+            false,
+            false,
+            ['ID']
+        );
+
+        while ($arOffer = $rsOffers->Fetch()) {
+            $offerIds[] = (int)$arOffer['ID'];
+        }
+
+        foreach ($offerIds as $offerId) {
+            CIBlockElement::SetPropertyValuesEx((int)$offerId, $offersIblockId, [
+                $offerUrlPropCode => $productCodeForOffer,
+            ]);
         }
     }
 
@@ -625,10 +679,10 @@ foreach ($readyByArticle as $key => $data) {
 $st = $GLOBALS['IMPORT_STATS'];
 
 if (!$quiet || (int)($st['errors'] ?? 0) > 0) {
-    echo "ГОТОВО: обработано={$st['processed']} | добавлено={$st['added']} | обновлено={$st['updated']} | пропущено(пустой CODE)={$st['skipped_empty_code']} | ошибок={$st['errors']}" . PHP_EOL;
+    echo "ответ: обработано={$st['processed']} | добавлено={$st['added']} | обновлено={$st['updated']} | пропущено(пустой CODE)={$st['skipped_empty_code']} | ошибок={$st['errors']}" . PHP_EOL;
 
     if (!empty($GLOBALS['IMPORT_ERRORS'])) {
-        echo "ПРИМЕРЫ ОШИБОК (первые " . count($GLOBALS['IMPORT_ERRORS']) . "):" . PHP_EOL;
+        echo "примеры ошибок (первые " . count($GLOBALS['IMPORT_ERRORS']) . "):" . PHP_EOL;
         foreach ($GLOBALS['IMPORT_ERRORS'] as $msg) {
             echo $msg . PHP_EOL;
         }

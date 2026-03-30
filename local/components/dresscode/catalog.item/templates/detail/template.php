@@ -8,8 +8,10 @@ $this->addExternalCss($templateFolder . "/css/media.css");
 $this->addExternalCss($templateFolder . "/css/set.css");
 $this->addExternalCss($templateFolder . "/css/custom.css");
 $this->addExternalCss($templateFolder . "/css/product-modifications.css");
+$this->addExternalCss("/bitrix/modules/webprostor.core/install/bitrix/css/webprostor.core/fancybox/jquery.fancybox.css");
 
-
+$this->addExternalJS("/bitrix/modules/webprostor.core/install/bitrix/js/webprostor.core/fancybox/jquery.fancybox.min.js");
+$this->addExternalJS($templateFolder . "/js/brand-fancybox.js");
 $this->addExternalJS($templateFolder . "/js/custom-cor-opicanie.js");
 $this->addExternalJS($templateFolder . "/js/morePicturesCarousel.js");
 $this->addExternalJS($templateFolder . "/js/pictureSlider.js");
@@ -143,11 +145,19 @@ if (!empty($arResult["EDIT_LINK"])) {
                 <div class="mainContainer" id="browse">
                     <div
                         class="secondCol col<? if (empty($arResult["PREVIEW_TEXT"]) && empty($arResult["SKU_OFFERS"]) && empty($arResult["PROPERTIES"])): ?> hide<? endif; ?>">
-                        <div class="brandImageWrap">
+                        <div class="brandImageWrap brand-block">
                             <? if (!empty($arResult["BRAND"]["PICTURE"])): ?>
-                                <a href="<?= $arResult["BRAND"]["DETAIL_PAGE_URL"] ?>" class="brandImage"><img
+                                <a href="<?= $arResult["BRAND"]["DETAIL_PAGE_URL"] ?>" class="brandImage brand-block__pict"><img
                                         src="<?= $arResult["BRAND"]["PICTURE"]["src"] ?>"
                                         alt="<?= $arResult["BRAND"]["NAME"] ?>"></a>
+                            <? endif; ?>
+                            <? if (!empty($arResult["BRAND"]["PICTURE"])): ?>
+                                <div class="brand-block__block">
+                                    <a class="brand-block__name" href="<?= $arResult["BRAND"]["DETAIL_PAGE_URL"] ?>" rel="nofollow">
+                                        ОВЕН (Россия)
+                                    </a>
+                                    <a class="brand-block__certificate" target="_blank" href="/upload/ОВЕН.pdf" data-fancybox="">Сертификат дилера</a>
+                                </div>
                             <? endif; ?>
                             <? $APPLICATION->IncludeComponent(
                                 "dresscode:catalog.sale.item",
@@ -1204,37 +1214,6 @@ if (!empty($arResult["EDIT_LINK"])) {
         )
     ); ?>
 <? endif; ?>
-<div itemscope itemtype="http://schema.org/Product" class="microdata">
-    <meta itemprop="name" content="<?= $arResult["NAME"] ?>" />
-    <link itemprop="url" href="<?= $arResult["DETAIL_PAGE_URL"] ?>" />
-    <link itemprop="image" href="<?= $arResult["IMAGES"][0]["LARGE_IMAGE"]["SRC"] ?>" />
-    <meta itemprop="brand" content="<?= $arResult["BRAND"]["NAME"] ?>" />
-    <meta itemprop="model" content="<?= $arResult["PROPERTIES"]["CML2_ARTICLE"]["VALUE"] ?>" />
-    <meta itemprop="productID" content="<?= $arResult["ID"] ?>" />
-    <meta itemprop="category" content="<?= $arResult["SECTION"]["NAME"] ?>" />
-    <? if (!empty($arResult["PROPERTIES"]["RATING"]["VALUE"])): ?>
-        <div itemprop="aggregateRating" itemscope itemtype="http://schema.org/AggregateRating">
-            <meta itemprop="ratingValue" content="<?= $arResult["PROPERTIES"]["RATING"]["VALUE"] ?>">
-            <meta itemprop="reviewCount" content="<?= intval($arResult["PROPERTIES"]["VOTE_COUNT"]["VALUE"]) ?>">
-        </div>
-    <? endif; ?>
-    <div itemprop="offers" itemscope itemtype="http://schema.org/Offer">
-        <meta itemprop="priceCurrency" content="<?= $arResult["EXTRA_SETTINGS"]["CURRENCY"] ?>" />
-        <meta itemprop="price" content="<?= $arResult["PRICE"]["DISCOUNT_PRICE"] ?>" />
-        <link itemprop="url" href="<?= $arResult["DETAIL_PAGE_URL"] ?>" />
-        <? if ($arResult["CATALOG_QUANTITY"] > 0): ?>
-            <link itemprop="availability" href="http://schema.org/InStock">
-        <? else: ?>
-            <link itemprop="availability" href="http://schema.org/OutOfStock">
-        <? endif; ?>
-    </div>
-    <? if (!empty($arResult["PREVIEW_TEXT"])): ?>
-        <meta itemprop="description" content='<?= $arResult["PREVIEW_TEXT"] ?>' />
-    <? endif; ?>
-    <? if (empty($arResult["PREVIEW_TEXT"]) && !empty($arResult["DETAIL_TEXT"])): ?>
-        <meta itemprop="description" content='<?= $arResult["DETAIL_TEXT"] ?>' />
-    <? endif; ?>
-</div>
 
 <script src="//yastatic.net/es5-shims/0.0.2/es5-shims.min.js" charset="utf-8"></script>
 <script src="//yastatic.net/share2/share.js" charset="utf-8"></script>
@@ -1362,5 +1341,101 @@ if (!empty($arResult["EDIT_LINK"])) {
             console.error('Артикул товара не найден!');
         }
     });
+</script>
+
+<?
+//  МИКРОРАЗМЕТКА SCHEMA.ORG ДЛЯ ЯНДЕКС.ТОВАРЫ 
+$schemaData = array(
+    "@context" => "https://schema.org/",
+    "@type" => "Product",
+    "name" => htmlspecialchars($arResult["NAME"]),
+    "description" => htmlspecialchars(strip_tags($arResult["PREVIEW_TEXT"] ?: $arResult["DETAIL_TEXT"])),
+);
+
+// URL товара
+if (!empty($arResult["DETAIL_PAGE_URL"])) {
+    $schemaData["url"] = (strpos($arResult["DETAIL_PAGE_URL"], 'http') === 0) 
+        ? $arResult["DETAIL_PAGE_URL"] 
+        : 'https://' . $_SERVER['HTTP_HOST'] . $arResult["DETAIL_PAGE_URL"];
+}
+
+// Изображение товара
+if (!empty($arResult["DETAIL_PICTURE"]["SRC"]) || !empty($arResult["PREVIEW_PICTURE"]["SRC"])) {
+    $imageSrc = $arResult["DETAIL_PICTURE"]["SRC"] ?: $arResult["PREVIEW_PICTURE"]["SRC"];
+    $schemaData["image"] = (strpos($imageSrc, 'http') === 0) 
+        ? $imageSrc 
+        : 'https://' . $_SERVER['HTTP_HOST'] . $imageSrc;
+}
+
+// Артикул товара
+if (!empty($arResult["PROPERTIES"]["CML2_ARTICLE"]["VALUE"])) {
+    $schemaData["sku"] = htmlspecialchars($arResult["PROPERTIES"]["CML2_ARTICLE"]["VALUE"]);
+} elseif (!empty($arResult["PROPERTIES"]["ARTNUMBER"]["VALUE"])) {
+    $schemaData["sku"] = htmlspecialchars($arResult["PROPERTIES"]["ARTNUMBER"]["VALUE"]);
+}
+
+// Производитель/бренд
+if (!empty($arResult["PROPERTIES"]["MANUFACTURER"]["VALUE"])) {
+    $schemaData["brand"] = array(
+        "@type" => "Brand",
+        "name" => htmlspecialchars($arResult["PROPERTIES"]["MANUFACTURER"]["VALUE"])
+    );
+} elseif (!empty($arResult["PROPERTIES"]["BRAND"]["VALUE"])) {
+    $schemaData["brand"] = array(
+        "@type" => "Brand",
+        "name" => htmlspecialchars($arResult["PROPERTIES"]["BRAND"]["VALUE"])
+    );
+}
+
+// Цена и наличие
+$schemaData["offers"] = array(
+    "@type" => "Offer",
+    "priceCurrency" => "RUB"
+);
+
+// Получаем цену товара
+if (!empty($arResult["ITEM_PRICES"][0])) {
+    $schemaData["offers"]["price"] = number_format($arResult["ITEM_PRICES"][0]["PRICE"], 2, '.', '');
+    
+    if (!empty($arResult["ITEM_PRICES"][0]["BASE_PRICE"]) && 
+        $arResult["ITEM_PRICES"][0]["BASE_PRICE"] > $arResult["ITEM_PRICES"][0]["PRICE"]) {
+        $schemaData["offers"]["priceValidUntil"] = date('Y-m-d', strtotime('+1 year'));
+    }
+} elseif (!empty($arResult["MIN_PRICE"]["VALUE"])) {
+    $schemaData["offers"]["price"] = number_format($arResult["MIN_PRICE"]["VALUE"], 2, '.', '');
+}
+
+// URL предложения
+if (!empty($arResult["DETAIL_PAGE_URL"])) {
+    $schemaData["offers"]["url"] = (strpos($arResult["DETAIL_PAGE_URL"], 'http') === 0) 
+        ? $arResult["DETAIL_PAGE_URL"] 
+        : 'https://' . $_SERVER['HTTP_HOST'] . $arResult["DETAIL_PAGE_URL"];
+}
+
+// Наличие товара
+if (!empty($arResult["CAN_BUY"])) {
+    $schemaData["offers"]["availability"] = "https://schema.org/InStock";
+} else {
+    $schemaData["offers"]["availability"] = "https://schema.org/OutOfStock";
+}
+
+// Рейтинг (если есть)
+if (!empty($arResult["PROPERTIES"]["RATING"]["VALUE"]) && $arResult["PROPERTIES"]["RATING"]["VALUE"] > 0) {
+    $schemaData["aggregateRating"] = array(
+        "@type" => "AggregateRating",
+        "ratingValue" => $arResult["PROPERTIES"]["RATING"]["VALUE"],
+        "bestRating" => "5",
+        "worstRating" => "1"
+    );
+    
+    if (!empty($arResult["PROPERTIES"]["VOTE_COUNT"]["VALUE"])) {
+        $schemaData["aggregateRating"]["ratingCount"] = $arResult["PROPERTIES"]["VOTE_COUNT"]["VALUE"];
+    }
+}
+
+// Выводим микроразметку
+?>
+<script type="application/ld+json">
+<?= json_encode($schemaData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?>
 </script>
 

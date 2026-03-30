@@ -1052,7 +1052,9 @@
 }
 
 #elementContainer .brandImageWrap {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: 16px;
 }
 
 #elementContainer .brandImageWrap .tb {
@@ -1061,9 +1063,49 @@
 
 #elementContainer .brandImage {
 	display: inline-block;
-	margin-right: 66px;
-	margin-bottom: 24px;
+	flex-shrink: 0;
 	vertical-align: middle;
+}
+
+#elementContainer .brand-block__pict {
+	display: inline-block;
+	flex-shrink: 0;
+	vertical-align: middle;
+}
+
+#elementContainer .brand-block__block {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding-top: 4px;
+}
+
+#elementContainer .brand-block__name {
+	font-size: 16px;
+	font-weight: 600;
+	line-height: 1.4;
+	color: #333;
+	text-decoration: none;
+	transition: color 0.2s ease;
+}
+
+#elementContainer .brand-block__name:hover {
+	color: #0066cc;
+	text-decoration: none;
+}
+
+#elementContainer .brand-block__certificate {
+	font-size: 14px;
+	line-height: 1.4;
+	color: #0066cc;
+	text-decoration: underline;
+	cursor: pointer;
+	transition: color 0.2s ease;
+}
+
+#elementContainer .brand-block__certificate:hover {
+	color: #004499;
+	text-decoration: underline;
 }
 
 #elementContainer .bindAction {

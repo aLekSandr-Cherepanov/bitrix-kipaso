@@ -54,7 +54,7 @@ foreach ($xml->xpath('//price[izd_code]') as $priceNode) {
 }
 
 echo "Всего цен в XML: " . count($pricesByIzd) . "\n";
-// ищем элемент по коду
+
 function findElementIdByCode(string $code, int $iblockId): ?int
 {
     $row = ElementTable::getList([
@@ -70,25 +70,9 @@ function findElementIdByCode(string $code, int $iblockId): ?int
     return $row ? (int)$row['ID'] : null;
     
 }
-// ищем элемент по XML_ID
-function findElementIdByXmlId(string $xmlId, int $iblockId): ?int
-{
-    $row = ElementTable::getList([
-        'filter' => [
-            '=IBLOCK_ID' => $iblockId,
-            '=XML_ID' => $xmlId,
-            'ACTIVE' => 'Y',
-        ],
-        'select' => ['ID'],
-        'limit' => 1,
-    ])->fetch();
-
-    return $row ? (int)$row['ID'] : null;
-}
 
 
 $targetIblockId = 17;
-$landingIblockId = 16; 
 
 function getBasePriceTypeId(): int
 {
@@ -144,28 +128,12 @@ $updated = 0;
 $missed  = 0;
 
 foreach ($pricesByIzd as $izd => $price) {
-    $offerId   = findElementIdByCode($izd, $targetIblockId);   
-    $landingId = findElementIdByXmlId($izd, $landingIblockId); 
- 
-    foreach (array_filter([$offerId, $landingId]) as $pid) {
-        upsertBasePrice($pid, $price);
-        $updated++;
-    }
- 
-    if (!$offerId && !$landingId) { $missed++; }
-}
-
-
-
-foreach ($pricesByIzd as $izd => $price) {
     $elementId = findElementIdByCode($izd, $targetIblockId);
-    $landingId = findElementIdByXmlId($izd, $landingIblockId);
-    if (!$elementId && !$landingId) {
+    if (!$elementId) {
         $missed++;
         continue;
     } 
-    
-    upsertBasePrice($elementId ?: $landingId, $price);
+    upsertBasePrice($elementId, $price);
     $updated++;
 }
 

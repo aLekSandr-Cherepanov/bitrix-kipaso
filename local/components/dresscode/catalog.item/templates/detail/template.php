@@ -156,7 +156,7 @@ if (!empty($arResult["EDIT_LINK"])) {
                                     <a class="brand-block__name" href="<?= $arResult["BRAND"]["DETAIL_PAGE_URL"] ?>" rel="nofollow">
                                         ОВЕН (Россия)
                                     </a>
-                                    <a class="brand-block__certificate" target="_blank" href="/upload/ОВЕН.pdf" data-fancybox="">Сертификат дилера</a>
+                                    <a class="brand-block__certificate" target="_blank" href="/upload/OWEN_page.jpg" data-fancybox="">Сертификат дилера</a>
                                 </div>
                             <? endif; ?>
                             <? $APPLICATION->IncludeComponent(
@@ -209,58 +209,6 @@ if (!empty($arResult["EDIT_LINK"])) {
                                 <div class="changeShortDescription" data-first-value='<?= $arResult["PREVIEW_TEXT"] ?>'>
                                     <?= $arResult["PREVIEW_TEXT"] ?></div>
                             </div>
-                        <? endif; ?>
-                        <? if (!empty($arResult["SKU_OFFERS"])): ?>
-                            <? if (!empty($arResult["SKU_PROPERTIES"]) && $level = 1): ?>
-                                <div class="elementSkuVariantLabel"><?= Loc::getMessage("SKU_VARIANT_LABEL") ?></div>
-                                <? foreach ($arResult["SKU_PROPERTIES"] as $propName => $arNextProp): ?>
-                                    <? if (!empty($arNextProp["VALUES"])): ?>
-                                        <? if ($arNextProp["LIST_TYPE"] == "L" && $arNextProp["HIGHLOAD"] != "Y"): ?>
-                                            <div class="elementSkuProperty elementSkuDropDownProperty" data-name="<?= $propName ?>"
-                                                data-level="<?= $level++ ?>" data-highload="<?= $arNextProp["HIGHLOAD"] ?>">
-                                                <div class="elementSkuPropertyName"><?= preg_replace("/\[.*\]/", "", $arNextProp["NAME"]) ?>:
-                                                </div>
-                                                <div class="skuDropdown">
-                                                    <ul class="elementSkuPropertyList skuDropdownList">
-                                                        <? foreach ($arNextProp["VALUES"] as $xml_id => $arNextPropValue): ?>
-                                                            <? if ($arNextPropValue["SELECTED"] == "Y"): ?>
-                                                                <? $currentSkuValue = $arNextPropValue["DISPLAY_VALUE"]; ?>
-                                                            <? endif; ?>
-                                                            <li class="skuDropdownListItem elementSkuPropertyValue<? if ($arNextPropValue["DISABLED"] == "Y"): ?> disabled<? elseif ($arNextPropValue["SELECTED"] == "Y"): ?> selected<? endif; ?>"
-                                                                data-name="<?= $propName ?>" data-value="<?= $arNextPropValue["VALUE"] ?>">
-                                                                <a href="#"
-                                                                    class="elementSkuPropertyLink skuPropertyItemLink"><?= $arNextPropValue["DISPLAY_VALUE"] ?></a>
-                                                            </li>
-                                                        <? endforeach; ?>
-                                                    </ul>
-                                                    <span class="skuCheckedItem"><?= $currentSkuValue ?></span>
-                                                </div>
-                                            </div>
-                                        <? else: ?>
-                                            <div class="elementSkuProperty" data-name="<?= $propName ?>" data-level="<?= $level++ ?>"
-                                                data-highload="<?= $arNextProp["HIGHLOAD"] ?>">
-                                                <div class="elementSkuPropertyName"><?= preg_replace("/\[.*\]/", "", $arNextProp["NAME"]) ?>:
-                                                </div>
-                                                <ul class="elementSkuPropertyList">
-                                                    <? foreach ($arNextProp["VALUES"] as $xml_id => $arNextPropValue): ?>
-                                                        <li class="elementSkuPropertyValue<? if ($arNextPropValue["DISABLED"] == "Y"): ?> disabled<? elseif ($arNextPropValue["SELECTED"] == "Y"): ?> selected<? endif; ?>"
-                                                            data-name="<?= $propName ?>" data-value="<?= $arNextPropValue["VALUE"] ?>">
-                                                            <a href="#"
-                                                                class="elementSkuPropertyLink<? if (!empty($arNextPropValue["IMAGE"])): ?> elementSkuPropertyPicture<? endif; ?>">
-                                                                <? if (!empty($arNextPropValue["IMAGE"])): ?>
-                                                                    <img src="<?= $arNextPropValue["IMAGE"]["src"] ?>" alt="">
-                                                                <? else: ?>
-                                                                    <?= $arNextPropValue["DISPLAY_VALUE"] ?>
-                                                                <? endif; ?>
-                                                            </a>
-                                                        </li>
-                                                    <? endforeach; ?>
-                                                </ul>
-                                            </div>
-                                        <? endif; ?>
-                                    <? endif; ?>
-                                <? endforeach; ?>
-                            <? endif; ?>
                         <? endif; ?>
                         <!-- <div class="changePropertiesNoGroup" style="display: none;">
                             <? $APPLICATION->IncludeComponent(
@@ -1344,84 +1292,297 @@ if (!empty($arResult["EDIT_LINK"])) {
 </script>
 
 <?
-//  МИКРОРАЗМЕТКА SCHEMA.ORG ДЛЯ ЯНДЕКС.ТОВАРЫ 
-$schemaData = array(
-    "@context" => "https://schema.org/",
-    "@type" => "Product",
-    "name" => htmlspecialchars($arResult["NAME"]),
-    "description" => htmlspecialchars(strip_tags($arResult["PREVIEW_TEXT"] ?: $arResult["DETAIL_TEXT"])),
-);
+//  МИКРОРАЗМЕТКА SCHEMA.ORG ДЛЯ ЯНДЕКС И GOOGLE
+// Определяем тип страницы: хаб (с ТП) или посадочная (конкретная модификация)
+$isHubPage = !empty($arResult["SKU_OFFERS"]) && count($arResult["SKU_OFFERS"]) > 0;
+$hasParentProduct = !empty($arResult["PARENT_PRODUCT"]["ID"]);
 
-// URL товара
-if (!empty($arResult["DETAIL_PAGE_URL"])) {
-    $schemaData["url"] = (strpos($arResult["DETAIL_PAGE_URL"], 'http') === 0) 
-        ? $arResult["DETAIL_PAGE_URL"] 
-        : 'https://' . $_SERVER['HTTP_HOST'] . $arResult["DETAIL_PAGE_URL"];
-}
+// Массив для хранения всех схем (может быть несколько для одной страницы)
+$schemaDataArray = array();
 
-// Изображение товара
-if (!empty($arResult["DETAIL_PICTURE"]["SRC"]) || !empty($arResult["PREVIEW_PICTURE"]["SRC"])) {
-    $imageSrc = $arResult["DETAIL_PICTURE"]["SRC"] ?: $arResult["PREVIEW_PICTURE"]["SRC"];
-    $schemaData["image"] = (strpos($imageSrc, 'http') === 0) 
-        ? $imageSrc 
-        : 'https://' . $_SERVER['HTTP_HOST'] . $imageSrc;
-}
-
-// Артикул товара
-if (!empty($arResult["PROPERTIES"]["CML2_ARTICLE"]["VALUE"])) {
-    $schemaData["sku"] = htmlspecialchars($arResult["PROPERTIES"]["CML2_ARTICLE"]["VALUE"]);
-} elseif (!empty($arResult["PROPERTIES"]["ARTNUMBER"]["VALUE"])) {
-    $schemaData["sku"] = htmlspecialchars($arResult["PROPERTIES"]["ARTNUMBER"]["VALUE"]);
-}
-
-// Производитель/бренд
-if (!empty($arResult["PROPERTIES"]["MANUFACTURER"]["VALUE"])) {
-    $schemaData["brand"] = array(
-        "@type" => "Brand",
-        "name" => htmlspecialchars($arResult["PROPERTIES"]["MANUFACTURER"]["VALUE"])
-    );
-} elseif (!empty($arResult["PROPERTIES"]["BRAND"]["VALUE"])) {
-    $schemaData["brand"] = array(
-        "@type" => "Brand",
-        "name" => htmlspecialchars($arResult["PROPERTIES"]["BRAND"]["VALUE"])
-    );
-}
-
-// Цена и наличие
-$schemaData["offers"] = array(
-    "@type" => "Offer",
-    "priceCurrency" => "RUB"
-);
-
-// Получаем цену товара
-if (!empty($arResult["ITEM_PRICES"][0])) {
-    $schemaData["offers"]["price"] = number_format($arResult["ITEM_PRICES"][0]["PRICE"], 2, '.', '');
+if ($isHubPage) {
+    // ХАБ-СТРАНИЦА: товар с торговыми предложениями (например, 2TRM1)
+    // ДВУХСЛОЙНЫЙ ПОДХОД: Product + AggregateOffer (для Яндекса) + ProductGroup (для Google)
     
-    if (!empty($arResult["ITEM_PRICES"][0]["BASE_PRICE"]) && 
-        $arResult["ITEM_PRICES"][0]["BASE_PRICE"] > $arResult["ITEM_PRICES"][0]["PRICE"]) {
-        $schemaData["offers"]["priceValidUntil"] = date('Y-m-d', strtotime('+1 year'));
+    // СЛОЙ 1: Product + AggregateOffer (приоритет для Яндекса)
+    $productSchema = array(
+        "@context" => "https://schema.org/",
+        "@type" => "Product",
+        "name" => htmlspecialchars($arResult["NAME"]),
+        "description" => htmlspecialchars(strip_tags($arResult["PREVIEW_TEXT"] ?: $arResult["DETAIL_TEXT"])),
+    );
+    
+    // URL товара
+    if (!empty($arResult["DETAIL_PAGE_URL"])) {
+        $productSchema["url"] = (strpos($arResult["DETAIL_PAGE_URL"], 'http') === 0) 
+            ? $arResult["DETAIL_PAGE_URL"] 
+            : 'https://' . $_SERVER['HTTP_HOST'] . $arResult["DETAIL_PAGE_URL"];
     }
-} elseif (!empty($arResult["MIN_PRICE"]["VALUE"])) {
-    $schemaData["offers"]["price"] = number_format($arResult["MIN_PRICE"]["VALUE"], 2, '.', '');
-}
-
-// URL предложения
-if (!empty($arResult["DETAIL_PAGE_URL"])) {
-    $schemaData["offers"]["url"] = (strpos($arResult["DETAIL_PAGE_URL"], 'http') === 0) 
-        ? $arResult["DETAIL_PAGE_URL"] 
-        : 'https://' . $_SERVER['HTTP_HOST'] . $arResult["DETAIL_PAGE_URL"];
-}
-
-// Наличие товара
-if (!empty($arResult["CAN_BUY"])) {
-    $schemaData["offers"]["availability"] = "https://schema.org/InStock";
+    
+    // Изображение товара
+    if (!empty($arResult["DETAIL_PICTURE"]["SRC"]) || !empty($arResult["PREVIEW_PICTURE"]["SRC"])) {
+        $imageSrc = $arResult["DETAIL_PICTURE"]["SRC"] ?: $arResult["PREVIEW_PICTURE"]["SRC"];
+        $productSchema["image"] = (strpos($imageSrc, 'http') === 0) 
+            ? $imageSrc 
+            : 'https://' . $_SERVER['HTTP_HOST'] . $imageSrc;
+    }
+    
+    // Артикул родительского товара
+    if (!empty($arResult["PROPERTIES"]["CML2_ARTICLE"]["VALUE"])) {
+        $productSchema["sku"] = htmlspecialchars($arResult["PROPERTIES"]["CML2_ARTICLE"]["VALUE"]);
+    } elseif (!empty($arResult["PROPERTIES"]["ARTNUMBER"]["VALUE"])) {
+        $productSchema["sku"] = htmlspecialchars($arResult["PROPERTIES"]["ARTNUMBER"]["VALUE"]);
+    }
+    
+    // Производитель/бренд
+    if (!empty($arResult["PROPERTIES"]["MANUFACTURER"]["VALUE"])) {
+        $productSchema["brand"] = array(
+            "@type" => "Brand",
+            "name" => htmlspecialchars($arResult["PROPERTIES"]["MANUFACTURER"]["VALUE"])
+        );
+    } elseif (!empty($arResult["PROPERTIES"]["BRAND"]["VALUE"])) {
+        $productSchema["brand"] = array(
+            "@type" => "Brand",
+            "name" => htmlspecialchars($arResult["PROPERTIES"]["BRAND"]["VALUE"])
+        );
+    }
+    
+    // AggregateOffer с диапазоном цен (важно для Яндекса)
+    $productSchema["offers"] = array(
+        "@type" => "AggregateOffer",
+        "priceCurrency" => "RUB",
+        "offerCount" => count($arResult["SKU_OFFERS"])
+    );
+    
+    // Вычисляем минимальную и максимальную цену
+    $prices = array();
+    foreach ($arResult["SKU_OFFERS"] as $offer) {
+        if (!empty($offer["ITEM_PRICES"][0]["PRICE"])) {
+            $prices[] = $offer["ITEM_PRICES"][0]["PRICE"];
+        } elseif (!empty($offer["MIN_PRICE"]["VALUE"])) {
+            $prices[] = $offer["MIN_PRICE"]["VALUE"];
+        }
+    }
+    
+    if (!empty($prices)) {
+        $productSchema["offers"]["lowPrice"] = number_format(min($prices), 2, '.', '');
+        $productSchema["offers"]["highPrice"] = number_format(max($prices), 2, '.', '');
+    } elseif (!empty($arResult["MIN_PRICE"]["VALUE"])) {
+        $productSchema["offers"]["lowPrice"] = number_format($arResult["MIN_PRICE"]["VALUE"], 2, '.', '');
+    }
+    
+    if (!empty($arResult["DETAIL_PAGE_URL"])) {
+        $productSchema["offers"]["url"] = (strpos($arResult["DETAIL_PAGE_URL"], 'http') === 0) 
+            ? $arResult["DETAIL_PAGE_URL"] 
+            : 'https://' . $_SERVER['HTTP_HOST'] . $arResult["DETAIL_PAGE_URL"];
+    }
+    
+    // Наличие хотя бы одного товара в наличии
+    $hasAvailable = false;
+    foreach ($arResult["SKU_OFFERS"] as $offer) {
+        if (!empty($offer["CAN_BUY"])) {
+            $hasAvailable = true;
+            break;
+        }
+    }
+    $productSchema["offers"]["availability"] = $hasAvailable 
+        ? "https://schema.org/InStock" 
+        : "https://schema.org/OutOfStock";
+    
+    $schemaDataArray[] = $productSchema;
+    
+    // СЛОЙ 2: ProductGroup + hasVariant (для Google)
+    $productGroupSchema = array(
+        "@context" => "https://schema.org/",
+        "@type" => "ProductGroup",
+        "name" => htmlspecialchars($arResult["NAME"]),
+        "description" => htmlspecialchars(strip_tags($arResult["PREVIEW_TEXT"] ?: $arResult["DETAIL_TEXT"])),
+        "productGroupID" => htmlspecialchars($arResult["ID"])
+    );
+    
+    // URL группы
+    if (!empty($arResult["DETAIL_PAGE_URL"])) {
+        $productGroupSchema["url"] = (strpos($arResult["DETAIL_PAGE_URL"], 'http') === 0) 
+            ? $arResult["DETAIL_PAGE_URL"] 
+            : 'https://' . $_SERVER['HTTP_HOST'] . $arResult["DETAIL_PAGE_URL"];
+    }
+    
+    // Изображение группы
+    if (!empty($arResult["DETAIL_PICTURE"]["SRC"]) || !empty($arResult["PREVIEW_PICTURE"]["SRC"])) {
+        $imageSrc = $arResult["DETAIL_PICTURE"]["SRC"] ?: $arResult["PREVIEW_PICTURE"]["SRC"];
+        $productGroupSchema["image"] = (strpos($imageSrc, 'http') === 0) 
+            ? $imageSrc 
+            : 'https://' . $_SERVER['HTTP_HOST'] . $imageSrc;
+    }
+    
+    // Бренд
+    if (!empty($arResult["PROPERTIES"]["MANUFACTURER"]["VALUE"])) {
+        $productGroupSchema["brand"] = array(
+            "@type" => "Brand",
+            "name" => htmlspecialchars($arResult["PROPERTIES"]["MANUFACTURER"]["VALUE"])
+        );
+    } elseif (!empty($arResult["PROPERTIES"]["BRAND"]["VALUE"])) {
+        $productGroupSchema["brand"] = array(
+            "@type" => "Brand",
+            "name" => htmlspecialchars($arResult["PROPERTIES"]["BRAND"]["VALUE"])
+        );
+    }
+    
+    // Варианты товаров (hasVariant для Google)
+    $productGroupSchema["hasVariant"] = array();
+    
+    foreach ($arResult["SKU_OFFERS"] as $offer) {
+        $variantData = array(
+            "@type" => "Product",
+            "name" => htmlspecialchars($offer["NAME"]),
+            "sku" => htmlspecialchars($offer["PROPERTIES"]["CML2_ARTICLE"]["VALUE"] ?: $offer["ID"])
+        );
+        
+        // URL конкретной модификации
+        if (!empty($offer["DETAIL_PAGE_URL"])) {
+            $variantData["url"] = (strpos($offer["DETAIL_PAGE_URL"], 'http') === 0) 
+                ? $offer["DETAIL_PAGE_URL"] 
+                : 'https://' . $_SERVER['HTTP_HOST'] . $offer["DETAIL_PAGE_URL"];
+        }
+        
+        // Изображение варианта
+        if (!empty($offer["DETAIL_PICTURE"]["SRC"]) || !empty($offer["PREVIEW_PICTURE"]["SRC"])) {
+            $offerImageSrc = $offer["DETAIL_PICTURE"]["SRC"] ?: $offer["PREVIEW_PICTURE"]["SRC"];
+            $variantData["image"] = (strpos($offerImageSrc, 'http') === 0) 
+                ? $offerImageSrc 
+                : 'https://' . $_SERVER['HTTP_HOST'] . $offerImageSrc;
+        }
+        
+        // Цена варианта
+        $variantData["offers"] = array(
+            "@type" => "Offer",
+            "priceCurrency" => "RUB"
+        );
+        
+        if (!empty($offer["ITEM_PRICES"][0])) {
+            $variantData["offers"]["price"] = number_format($offer["ITEM_PRICES"][0]["PRICE"], 2, '.', '');
+            
+            if (!empty($offer["DETAIL_PAGE_URL"])) {
+                $variantData["offers"]["url"] = (strpos($offer["DETAIL_PAGE_URL"], 'http') === 0) 
+                    ? $offer["DETAIL_PAGE_URL"] 
+                    : 'https://' . $_SERVER['HTTP_HOST'] . $offer["DETAIL_PAGE_URL"];
+            }
+            
+            // Наличие
+            if (!empty($offer["CAN_BUY"])) {
+                $variantData["offers"]["availability"] = "https://schema.org/InStock";
+            } else {
+                $variantData["offers"]["availability"] = "https://schema.org/OutOfStock";
+            }
+        } elseif (!empty($offer["MIN_PRICE"]["VALUE"])) {
+            $variantData["offers"]["price"] = number_format($offer["MIN_PRICE"]["VALUE"], 2, '.', '');
+        }
+        
+        $productGroupSchema["hasVariant"][] = $variantData;
+    }
+    
+    $schemaDataArray[] = $productGroupSchema;
+    
 } else {
-    $schemaData["offers"]["availability"] = "https://schema.org/OutOfStock";
+    // ПОСАДОЧНАЯ СТРАНИЦА: конкретная модификация товара
+    $schemaData = array(
+        "@context" => "https://schema.org/",
+        "@type" => "Product",
+        "name" => htmlspecialchars($arResult["NAME"]),
+        "description" => htmlspecialchars(strip_tags($arResult["PREVIEW_TEXT"] ?: $arResult["DETAIL_TEXT"])),
+    );
+    
+    // URL товара
+    if (!empty($arResult["DETAIL_PAGE_URL"])) {
+        $schemaData["url"] = (strpos($arResult["DETAIL_PAGE_URL"], 'http') === 0) 
+            ? $arResult["DETAIL_PAGE_URL"] 
+            : 'https://' . $_SERVER['HTTP_HOST'] . $arResult["DETAIL_PAGE_URL"];
+    }
+    
+    // Изображение товара
+    if (!empty($arResult["DETAIL_PICTURE"]["SRC"]) || !empty($arResult["PREVIEW_PICTURE"]["SRC"])) {
+        $imageSrc = $arResult["DETAIL_PICTURE"]["SRC"] ?: $arResult["PREVIEW_PICTURE"]["SRC"];
+        $schemaData["image"] = (strpos($imageSrc, 'http') === 0) 
+            ? $imageSrc 
+            : 'https://' . $_SERVER['HTTP_HOST'] . $imageSrc;
+    }
+    
+    // Артикул товара
+    if (!empty($arResult["PROPERTIES"]["CML2_ARTICLE"]["VALUE"])) {
+        $schemaData["sku"] = htmlspecialchars($arResult["PROPERTIES"]["CML2_ARTICLE"]["VALUE"]);
+    } elseif (!empty($arResult["PROPERTIES"]["ARTNUMBER"]["VALUE"])) {
+        $schemaData["sku"] = htmlspecialchars($arResult["PROPERTIES"]["ARTNUMBER"]["VALUE"]);
+    }
+    
+    // Производитель/бренд
+    if (!empty($arResult["PROPERTIES"]["MANUFACTURER"]["VALUE"])) {
+        $schemaData["brand"] = array(
+            "@type" => "Brand",
+            "name" => htmlspecialchars($arResult["PROPERTIES"]["MANUFACTURER"]["VALUE"])
+        );
+    } elseif (!empty($arResult["PROPERTIES"]["BRAND"]["VALUE"])) {
+        $schemaData["brand"] = array(
+            "@type" => "Brand",
+            "name" => htmlspecialchars($arResult["PROPERTIES"]["BRAND"]["VALUE"])
+        );
+    }
+    
+    // Если это торговое предложение, добавляем связь с родительской группой
+    if ($hasParentProduct) {
+        // isVariantOf для связи с ProductGroup (Google рекомендует)
+        $schemaData["isVariantOf"] = array(
+            "@type" => "ProductGroup",
+            "name" => htmlspecialchars($arResult["PARENT_PRODUCT"]["NAME"]),
+            "url" => (strpos($arResult["PARENT_PRODUCT"]["DETAIL_PAGE_URL"], 'http') === 0) 
+                ? $arResult["PARENT_PRODUCT"]["DETAIL_PAGE_URL"] 
+                : 'https://' . $_SERVER['HTTP_HOST'] . $arResult["PARENT_PRODUCT"]["DETAIL_PAGE_URL"]
+        );
+        
+        // Добавляем productGroupID для явной связи
+        if (!empty($arResult["PARENT_PRODUCT"]["ID"])) {
+            $schemaData["inProductGroupWithID"] = htmlspecialchars($arResult["PARENT_PRODUCT"]["ID"]);
+        }
+    }
+    
+    // Цена и наличие (один конкретный Offer)
+    $schemaData["offers"] = array(
+        "@type" => "Offer",
+        "priceCurrency" => "RUB"
+    );
+    
+    // Получаем цену товара
+    if (!empty($arResult["ITEM_PRICES"][0])) {
+        $schemaData["offers"]["price"] = number_format($arResult["ITEM_PRICES"][0]["PRICE"], 2, '.', '');
+        
+        if (!empty($arResult["ITEM_PRICES"][0]["BASE_PRICE"]) && 
+            $arResult["ITEM_PRICES"][0]["BASE_PRICE"] > $arResult["ITEM_PRICES"][0]["PRICE"]) {
+            $schemaData["offers"]["priceValidUntil"] = date('Y-m-d', strtotime('+1 year'));
+        }
+    } elseif (!empty($arResult["MIN_PRICE"]["VALUE"])) {
+        $schemaData["offers"]["price"] = number_format($arResult["MIN_PRICE"]["VALUE"], 2, '.', '');
+    }
+    
+    // URL предложения
+    if (!empty($arResult["DETAIL_PAGE_URL"])) {
+        $schemaData["offers"]["url"] = (strpos($arResult["DETAIL_PAGE_URL"], 'http') === 0) 
+            ? $arResult["DETAIL_PAGE_URL"] 
+            : 'https://' . $_SERVER['HTTP_HOST'] . $arResult["DETAIL_PAGE_URL"];
+    }
+    
+    // Наличие товара
+    if (!empty($arResult["CAN_BUY"])) {
+        $schemaData["offers"]["availability"] = "https://schema.org/InStock";
+    } else {
+        $schemaData["offers"]["availability"] = "https://schema.org/OutOfStock";
+    }
+    
+    $schemaDataArray[] = $schemaData;
 }
 
-// Рейтинг (если есть)
-if (!empty($arResult["PROPERTIES"]["RATING"]["VALUE"]) && $arResult["PROPERTIES"]["RATING"]["VALUE"] > 0) {
-    $schemaData["aggregateRating"] = array(
+// Рейтинг (общий для обоих типов страниц)
+// Добавляем к первой схеме в массиве
+if (!empty($schemaDataArray) && !empty($arResult["PROPERTIES"]["RATING"]["VALUE"]) && $arResult["PROPERTIES"]["RATING"]["VALUE"] > 0) {
+    $schemaDataArray[0]["aggregateRating"] = array(
         "@type" => "AggregateRating",
         "ratingValue" => $arResult["PROPERTIES"]["RATING"]["VALUE"],
         "bestRating" => "5",
@@ -1429,13 +1590,18 @@ if (!empty($arResult["PROPERTIES"]["RATING"]["VALUE"]) && $arResult["PROPERTIES"
     );
     
     if (!empty($arResult["PROPERTIES"]["VOTE_COUNT"]["VALUE"])) {
-        $schemaData["aggregateRating"]["ratingCount"] = $arResult["PROPERTIES"]["VOTE_COUNT"]["VALUE"];
+        $schemaDataArray[0]["aggregateRating"]["ratingCount"] = $arResult["PROPERTIES"]["VOTE_COUNT"]["VALUE"];
     }
 }
 
 // Выводим микроразметку
+// Если несколько схем (хаб-страница), выводим каждую отдельно
+foreach ($schemaDataArray as $schema) {
 ?>
 <script type="application/ld+json">
-<?= json_encode($schemaData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?>
+<?= json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?>
 </script>
+<?
+}
+?>
 

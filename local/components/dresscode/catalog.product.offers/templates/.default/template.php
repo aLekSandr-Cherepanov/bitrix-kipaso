@@ -4,11 +4,6 @@
 <!-- Подключение CSS-файла конец-->
 <?$this->setFrameMode(true);?>
 <?if(!empty($arResult["ITEMS"])):?>
-	<?
-		$parentSectionId = (int)($arResult["PARENT_PRODUCT"]["IBLOCK_SECTION_ID"] ?? 0);
-		$showDetailsButton = ($parentSectionId === 111);
-		$basketColumnLabel = $showDetailsButton ? "Подробнее" : GetMessage("OFFERS_ADD_CART_COLUMN");
-	?>
 	<?if(empty($arParams["FROM_AJAX"])):?>
 		<div id="skuOffersTable">
 			<span class="heading"><?=GetMessage("OFFERS_PRODUCT_VARIANT")?></span>
@@ -16,19 +11,13 @@
 				<div class="offersTable">
 					<div class="thead">
 						<div class="tb">
-							<?if($arParams["DISPLAY_PICTURE_COLUMN"] == "Y"):?>
-								<div class="tc offersPicture" style="display: none;"></div>
-							<?endif;?>
 							<div class="tc offersName"><?=GetMessage("OFFERS_NAME_COLUMN")?></div>
-							<?foreach ($arResult["PROPERTY_NAMES"] as $nextPropertyName):?>
-								<div class="tc property"><?=$nextPropertyName?></div>
-							<?endforeach;?>
 							<div class="tc quantity"><?=GetMessage("OFFERS_AVAILABLE_COLUMN")?></div>
 							<div class="tc quanBaskWrap">
 								<div class="tb">
 									
 									<div class="tc priceWrap"><?=GetMessage("OFFERS_PRICE_COLUMN")?></div>
-									<div class="tc basket"><?=$basketColumnLabel?></div>
+									<div class="tc basket">Подробнее</div>
 								</div>
 							</div>
 						</div>
@@ -66,64 +55,49 @@
 								$this->AddEditAction("offers_".$arNextElement["ID"], $arNextElement["EDIT_LINK"], CIBlock::GetArrayByID($arParams["IBLOCK_ID"], "ELEMENT_EDIT"));
 								$this->AddDeleteAction("offers_".$arNextElement["ID"], $arNextElement["DELETE_LINK"], CIBlock::GetArrayByID($arParams["IBLOCK_ID"], "ELEMENT_DELETE"), array());
 
-								$parentSectionId = (int)($arResult["PARENT_PRODUCT"]["IBLOCK_SECTION_ID"] ?? 0);
-								$showDetailsButton = ($parentSectionId === 111);
-								
-								$posadValue = "";
+								$posadValue = $arNextElement["PROPERTIES"]["URL_POSAD"]["VALUE"] ?? "";
+								if (is_array($posadValue)) {
+									$posadValue = reset($posadValue);
+								}
+								$posadValue = trim((string)$posadValue);
 								$offerDetailsUrl = "";
-								
-								if ($showDetailsButton) {
-									$posadValue = $arNextElement["PROPERTIES"]["URL_POSAD"]["VALUE"] ?? "";
-									if (is_array($posadValue)) {
-										$posadValue = reset($posadValue);
-									}
-									$posadValue = trim((string)$posadValue);
 
-									if ($posadValue !== "") {
-										if (preg_match("~^https?://~i", $posadValue) || strpos($posadValue, "//") === 0) {
-											$offerDetailsUrl = $posadValue;
-										} elseif (substr($posadValue, 0, 1) === "/") {
-											$offerDetailsUrl = $posadValue;
+								if ($posadValue !== "") {
+									if (preg_match("~^https?://~i", $posadValue) || strpos($posadValue, "//") === 0) {
+										$offerDetailsUrl = $posadValue;
+									} elseif (substr($posadValue, 0, 1) === "/") {
+										$offerDetailsUrl = $posadValue;
+									} else {
+										$parentUrl = (string)($arResult["PARENT_PRODUCT"]["DETAIL_PAGE_URL"] ?? "");
+										$parentUrl = preg_replace("~[?#].*$~", "", $parentUrl);
+										$parentDir = rtrim(dirname($parentUrl), "/");
+										if ($parentDir === ".") {
+											$parentDir = "";
+										}
+
+										$parentExt = pathinfo($parentUrl, PATHINFO_EXTENSION);
+										$posadExt = pathinfo($posadValue, PATHINFO_EXTENSION);
+										$posadFile = ($posadExt !== "") ? $posadValue : ($posadValue . (!empty($parentExt) ? ("." . $parentExt) : ""));
+
+										if ($parentDir !== "") {
+											$offerDetailsUrl = $parentDir . "/" . $posadFile;
 										} else {
-											$parentUrl = (string)($arResult["PARENT_PRODUCT"]["DETAIL_PAGE_URL"] ?? "");
-											$parentUrl = preg_replace("~[?#].*$~", "", $parentUrl);
-											$parentDir = rtrim(dirname($parentUrl), "/");
-											if ($parentDir === ".") {
-												$parentDir = "";
-											}
-
-											$parentExt = pathinfo($parentUrl, PATHINFO_EXTENSION);
-											$posadExt = pathinfo($posadValue, PATHINFO_EXTENSION);
-											$posadFile = ($posadExt !== "") ? $posadValue : ($posadValue . (!empty($parentExt) ? ("." . $parentExt) : ""));
-
-											if ($parentDir !== "") {
-												$offerDetailsUrl = $parentDir . "/" . $posadFile;
-											} else {
-												$offerDetailsUrl = "/" . $posadFile;
-											}
+											$offerDetailsUrl = "/" . $posadFile;
 										}
 									}
+								}
 
-									if ($offerDetailsUrl === "") {
-										$offerDetailsUrl = (string)($arNextElement["DETAIL_PAGE_URL"] ?? "");
-									}
+								if ($offerDetailsUrl === "") {
+									$offerDetailsUrl = (string)($arNextElement["DETAIL_PAGE_URL"] ?? "");
 								}
 							?>
 							<div class="tableElem" id="<?=$this->GetEditAreaId("offers_".$arNextElement["ID"]);?>" data-offer-image="<?=htmlspecialcharsbx($arNextElement["PICTURE"]["src"])?>">
 								<div class="tb">
-									<?if($arParams["DISPLAY_PICTURE_COLUMN"] == "Y"):?>
-										<div class="tc offersPicture" style="display: none;">
-											<img src="<?=$arNextElement["PICTURE"]["src"]?>" alt="<?=$arNextElement["NAME"]?>">
-										</div>
-									<?endif;?>
 									<div class="tc offersName"><?=
                                         !empty($arNextElement['PROPERTIES']['modific']['VALUE'])
                                             ? $arNextElement['PROPERTIES']['modific']['VALUE']
                                             : $arNextElement["NAME"]
                                     ?></div>
-									<?foreach ($arNextElement["PROPERTIES_FILTRED"] as $arNextPropertyFiltred):?>
-										<div class="tc property"><?=$arNextPropertyFiltred["DISPLAY_VALUE"]?></div>
-									<?endforeach;?>
 									<div class="tc quantity">
 										<?if($arNextElement["CATALOG_QUANTITY"] > 0):?>
 											<span class="inStock label"><img src="<?=SITE_TEMPLATE_PATH?>/images/inStock.svg" alt="<?=GetMessage("AVAILABLE")?>" class="icon"><span><?=GetMessage("AVAILABLE")?></span></span>
@@ -167,23 +141,7 @@
 										<?endif;?>
 									</div>
 											<div class="tc basket">
-												<?if($showDetailsButton):?>
-													<a href="<?=htmlspecialcharsbx($offerDetailsUrl)?>" class="addCart offerDetails" target="_blank" rel="noopener noreferrer">Подробнее</a>
-												<?else:?>
-													<?if(!empty($arNextElement["PRICE"])):?>
-														<?if($arNextElement["CATALOG_AVAILABLE"] != "Y"):?>
-															<?if($arNextElement["CATALOG_SUBSCRIBE"] == "Y"):?>
-																<a href="#" class="addCart subscribe" data-id="<?=$arNextElement["ID"]?>" data-quantity="<?=$arNextElement["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><?=GetMessage("PRODUCT_SUBSCRIBE_LABEL")?></a>
-															<?else:?>
-																<a href="#" class="addCart disabled" data-id="<?=$arNextElement["ID"]?>" data-quantity="<?=$arNextElement["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><?=GetMessage("ADDCART_LABEL")?></a>															
-															<?endif;?>
-														<?else:?>
-															<a href="#" class="addCart" data-id="<?=$arNextElement["ID"]?>" data-quantity="<?=$arNextElement["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><?=GetMessage("ADDCART_LABEL")?></a>														
-														<?endif;?>
-													<?else:?>
-														<a href="#" class="addCart disabled requestPrice" data-id="<?=$arNextElement["ID"]?>" data-quantity="<?=$arNextElement["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><?=GetMessage("OFFERS_REQUEST_PRICE_BUTTON_LABEL")?></a>
-													<?endif;?>
-												<?endif;?>
+												<a href="<?=htmlspecialcharsbx($offerDetailsUrl)?>" class="addCart offerDetails" target="_blank" rel="noopener noreferrer">Подробнее</a>
 											</div>
 										</div>
 									</div>

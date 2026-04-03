@@ -6,10 +6,7 @@ html {
 
 body {
 	margin: 0;
-	font:
-		normal normal 14px "roboto_ltregular",
-		arial,
-		sans-serif;
+	font:14px/1.5 Arial, -apple-system, sans-serif;
 	line-height: 21px;
 	background-color: #ffffff;
 	-webkit-font-smoothing: antialiased;

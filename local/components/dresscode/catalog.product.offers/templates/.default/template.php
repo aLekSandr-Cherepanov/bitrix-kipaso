@@ -223,38 +223,6 @@
 					});
 				})();
 
-				// скрыть колонку с кнопкой "Купить" (#elementTools), если есть блок товарных предложений (#skuOffersTable)
-				(function(){
-					function toggleBuyTools(){
-						var offers = document.getElementById('skuOffersTable');
-						var tools = document.getElementById('elementTools');
-						if(!tools){
-							return;
-						}
-						if(offers){
-							tools.style.display = 'none';
-						}else{
-							tools.style.display = '';
-						}
-					}
-
-					if(document.readyState === 'loading'){
-						document.addEventListener('DOMContentLoaded', toggleBuyTools);
-					}else{
-						toggleBuyTools();
-					}
-
-					if(window.BX && BX.addCustomEvent){
-						BX.addCustomEvent('onAjaxSuccess', toggleBuyTools);
-					}
-
-					if(window.MutationObserver){
-						try{
-							var mo = new MutationObserver(function(){ toggleBuyTools(); });
-							mo.observe(document.body, {childList:true, subtree:true});
-						}catch(e){ /* silent */ }
-					}
-				})();
 			</script>
 	<?endif;//empty($arParams["FROM_AJAX"])?>
 <?endif;?>

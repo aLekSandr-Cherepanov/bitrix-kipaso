@@ -257,7 +257,7 @@
 	position: relative;
 	z-index: 1;
 	box-sizing: border-box;
-	width: 14%;
+	width: 30%;
 	padding: 24px 24px 0;
 	background-color: #fcfcfc;
 }
@@ -433,7 +433,7 @@
 }
 
 #catalogElement .fixContainer {
-	width: 220px;
+	/*width: 220px;*/
 }
 
 #catalogElement .mobileButtonsContainer {

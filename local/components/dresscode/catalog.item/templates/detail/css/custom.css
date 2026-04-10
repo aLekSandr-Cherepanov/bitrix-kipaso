@@ -3,6 +3,20 @@
     display: none !important;
 }
 
+/* Стили для блока короткого описания PARENT_PRODUCT */
+.short-description-block {
+    padding: 16px 20px;
+    background: #f5f5f5;
+    border-left: 4px solid #008f86;
+    border-radius: 4px;
+}
+
+.short-description-content {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #333;
+}
+
 /* 1) Ставим .gray обратно в табличный режим */
 .gray {
     width: 1000px;
@@ -54,6 +68,8 @@ table.stats td {
 
 /* Стили для блока отправки заявки */
 .product-email {
+    display: flex;
+    gap: 10px;
     box-shadow: 0 2px 5px #c7c7c7;
     border-radius: 5px;
     margin: 0 0 20px;
@@ -118,7 +134,7 @@ table.stats td {
 }
 
 .new-price-block .price-value {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 700;
     color: #000;
     line-height: 1.2;
@@ -128,7 +144,7 @@ table.stats td {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .advantage-item {
@@ -236,7 +252,7 @@ table.stats td {
 }
 
 .payment-info-block {
-    background: #00aed93b;
+    background: #f5f5f5;
     border-radius: 8px;
     padding: 16px 20px;
     margin-bottom: 20px;
@@ -338,7 +354,7 @@ table.stats td {
 
 /* Стили для кнопки "В корзину" в новой структуре */
 .new-element-tools .addCartContainer {
-    margin-bottom: 24px;
+    margin-bottom: 15px;
 }
 
 .new-element-tools .addCart {
@@ -395,6 +411,16 @@ table.stats td {
         left: 50%;
         display: inline-block;
         transform: translate(-50%, -50%);
+        transition: all 0.2s ease-in-out;
+    }
+
+    .new-element-tools .addCart .button-text {
+        width: 100%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        display: inline-block;
+        transform: translate(-50%, -70%);
         transition: all 0.2s ease-in-out;
     }
 

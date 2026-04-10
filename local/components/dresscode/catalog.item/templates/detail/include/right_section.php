@@ -1,8 +1,34 @@
 <div class="new-element-tools">
 	<div class="new-price-block">
 		<?if(!empty($arResult["PRICE"])):?>
-			<div class="price-label">от</div>
-			<div class="price-value"><?=CCurrencyLang::CurrencyFormat($arResult["PRICE"]["DISCOUNT_PRICE"], $arResult["EXTRA_SETTINGS"]["CURRENCY"], true)?></div>
+			<?
+			// Логика вывода цены в зависимости от наличия торговых предложений
+			$hasOffers = ($arResult["HAS_OFFERS"] == "Y");
+			$minPrice = $arResult["MIN_PRICE"];
+			$maxPrice = $arResult["MAX_PRICE"];
+			$currency = $arResult["EXTRA_SETTINGS"]["CURRENCY"];
+			
+			if ($hasOffers && !empty($minPrice) && !empty($maxPrice)):
+				// Товар с торговыми предложениями
+				if ($minPrice == $maxPrice):
+					// Цены одинаковые - выводим одну цену без "от"
+					?>
+					<div class="price-value"><?=CCurrencyLang::CurrencyFormat($minPrice, $currency, true)?></div>
+				<?else:
+					// Разные цены - выводим диапазон
+					$formattedMinPrice = number_format($minPrice, 2, '.', '&nbsp;');
+					$formattedMinPrice = rtrim(rtrim($formattedMinPrice, '0'), '.');
+					?>
+					<div class="price-label">от</div>
+					<div class="price-value"><?=$formattedMinPrice?></div>
+					<div class="price-label">до</div>
+					<div class="price-value"><?=CCurrencyLang::CurrencyFormat($maxPrice, $currency, true)?></div>
+				<?endif;?>
+			<?else:
+				// Товар без торговых предложений - выводим текущую цену без "от"
+				?>
+				<div class="price-value"><?=CCurrencyLang::CurrencyFormat($arResult["PRICE"]["DISCOUNT_PRICE"], $currency, true)?></div>
+			<?endif;?>
 		<?else:?>
 			<div class="price-value"><?=GetMessage("REQUEST_PRICE_LABEL")?></div>
 		<?endif;?>
@@ -28,7 +54,7 @@
 				<rect width="20" height="20" rx="4" fill="#008f86"/>
 				<path d="M6 10L9 13L14 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 			</svg>
-			<span>Быстрая доставка по России</span>
+			<span>Гарантия производителя</span>
 		</div>
 		<div class="advantage-item">
 			<svg class="check-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -39,26 +65,34 @@
 		</div>
 	</div>
 
-	<div class="addCartContainer">
-		<?if(!empty($arResult["PRICE"])):?>
-			<?if($arResult["CATALOG_AVAILABLE"] != "Y"):?>
-				<?if($arResult["CATALOG_SUBSCRIBE"] == "Y"):?>
-					<a href="#" class="addCart subscribe changeID changeQty changeCart" data-id="<?=$arResult["ID"]?>" data-quantity="<?=$arResult["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><span><img src="<?=SITE_TEMPLATE_PATH?>/images/subscribe.svg" alt="<?=GetMessage("SUBSCRIBE_LABEL")?>" class="icon"><?=GetMessage("SUBSCRIBE_LABEL")?></span></a>
+	<?if($arResult["HAS_OFFERS"] != "Y"):?>
+		<!-- Блок кнопки для товаров БЕЗ торговых предложений -->
+		<div class="addCartContainer">
+			<?if(!empty($arResult["PRICE"])):?>
+				<?if($arResult["CATALOG_AVAILABLE"] != "Y"):?>
+					<?if($arResult["CATALOG_SUBSCRIBE"] == "Y"):?>
+						<a href="#" class="addCart subscribe changeID changeQty changeCart" data-id="<?=$arResult["ID"]?>" data-quantity="<?=$arResult["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><span><img src="<?=SITE_TEMPLATE_PATH?>/images/incart.svg" alt="<?=GetMessage("SUBSCRIBE_LABEL")?>" class="icon"><?=GetMessage("SUBSCRIBE_LABEL")?></span></a>
+					<?else:?>
+						<a href="#" class="addCart changeID changeQty changeCart disabled" data-id="<?=$arResult["ID"]?>" data-quantity="<?=$arResult["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><span><img src="<?=SITE_TEMPLATE_PATH?>/images/incart.svg" alt="<?=GetMessage("ADDCART_LABEL")?>" class="icon"><?=GetMessage("ADDCART_LABEL")?></span></a>
+					<?endif;?>
 				<?else:?>
-					<a href="#" class="addCart changeID changeQty changeCart disabled" data-id="<?=$arResult["ID"]?>" data-quantity="<?=$arResult["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><span><img src="<?=SITE_TEMPLATE_PATH?>/images/incart.svg" alt="<?=GetMessage("ADDCART_LABEL")?>" class="icon"><?=GetMessage("ADDCART_LABEL")?></span></a>
+					<a href="#" class="addCart changeID changeQty changeCart" data-id="<?=$arResult["ID"]?>" data-quantity="<?=$arResult["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><span><img src="<?=SITE_TEMPLATE_PATH?>/images/incart.svg" alt="<?=GetMessage("ADDCART_LABEL")?>" class="icon"><?=GetMessage("ADDCART_LABEL")?></span></a>
 				<?endif;?>
 			<?else:?>
-				<a href="#" class="addCart changeID changeQty changeCart" data-id="<?=$arResult["ID"]?>" data-quantity="<?=$arResult["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><span><img src="<?=SITE_TEMPLATE_PATH?>/images/incart.svg" alt="<?=GetMessage("ADDCART_LABEL")?>" class="icon"><?=GetMessage("ADDCART_LABEL")?></span></a>
+				<a href="#" class="addCart changeID changeQty changeCart disabled requestPrice" data-id="<?=$arResult["ID"]?>" data-quantity="<?=$arResult["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><span><img src="<?=SITE_TEMPLATE_PATH?>/images/request.svg" alt="<?=GetMessage("REQUEST_PRICE_BUTTON_LABEL")?>" class="icon"><?=GetMessage("REQUEST_PRICE_BUTTON_LABEL")?></span></a>
 			<?endif;?>
-		<?else:?>
-			<a href="#" class="addCart changeID changeQty changeCart disabled requestPrice" data-id="<?=$arResult["ID"]?>" data-quantity="<?=$arResult["EXTRA_SETTINGS"]["BASKET_STEP"]?>"><span><img src="<?=SITE_TEMPLATE_PATH?>/images/request.svg" alt="<?=GetMessage("REQUEST_PRICE_BUTTON_LABEL")?>" class="icon"><?=GetMessage("REQUEST_PRICE_BUTTON_LABEL")?></span></a>
-		<?endif;?>
-		<div class="qtyBlock columnRow row">
-			<div class="qtyBlockContainer">
-				<a href="#" class="minus"></a><input type="text" class="qty"<?if(!empty($arResult["PRICE"]["EXTENDED_PRICES"])):?> data-extended-price='<?=\Bitrix\Main\Web\Json::encode($arResult["PRICE"]["EXTENDED_PRICES"])?>'<?endif;?> value="<?=$arResult["EXTRA_SETTINGS"]["BASKET_STEP"]?>" data-step="<?=$arResult["EXTRA_SETTINGS"]["BASKET_STEP"]?>" data-max-quantity="<?=$arResult["CATALOG_QUANTITY"]?>" data-enable-trace="<?=(($arResult["CATALOG_QUANTITY_TRACE"] == "Y" && $arResult["CATALOG_CAN_BUY_ZERO"] == "N") ? "Y" : "N")?>"><a href="#" class="plus"></a>
+			<div class="qtyBlock columnRow row">
+				<div class="qtyBlockContainer">
+					<a href="#" class="minus"></a><input type="text" class="qty"<?if(!empty($arResult["PRICE"]["EXTENDED_PRICES"])):?> data-extended-price='<?=\Bitrix\Main\Web\Json::encode($arResult["PRICE"]["EXTENDED_PRICES"])?>'<?endif;?> value="<?=$arResult["EXTRA_SETTINGS"]["BASKET_STEP"]?>" data-step="<?=$arResult["EXTRA_SETTINGS"]["BASKET_STEP"]?>" data-max-quantity="<?=$arResult["CATALOG_QUANTITY"]?>" data-enable-trace="<?=(($arResult["CATALOG_QUANTITY_TRACE"] == "Y" && $arResult["CATALOG_CAN_BUY_ZERO"] == "N") ? "Y" : "N")?>"><a href="#" class="plus"></a>
+				</div>
 			</div>
 		</div>
-	</div>
+	<?else:?>
+		<!-- Блок кнопки для товаров С торговыми предложениями -->
+		<div class="addCartContainer">
+			<a href="#" class="addCart scrollToOffers" data-target=".offersTableContainer"><p class="button-text">Подобрать и купить</p></a>
+		</div>
+	<?endif;?>
 
 	<div class="service-info-block">
 		<div class="service-info-item">
@@ -112,6 +146,9 @@
 		<div class="contact-item">
 			<img class="diler-item-icon" src="/local/templates/dresscodeV2/images/deliv.png" alt="">
 			<span>Официальный дилер ОВЕН в России</span>
+		</div>
+		<div class="product-email">
+    		Отправить заявку: <a target="_blank" href="mailto:info@kipaso.ru" class="product-email__link">info@kipaso.ru</a>
 		</div>
 	</div>
 

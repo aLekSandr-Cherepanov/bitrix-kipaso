@@ -303,6 +303,28 @@
 			"NAME" => GetMessage("CATALOG_ELEMENT_MODIFICATIONS"), // Название (нужно добавить в языковые файлы)
 			"ID" => "mod-owen"
 		);
+
+		// Получаем MINIMUM_PRICE и MAXIMUM_PRICE для товаров с торговыми предложениями
+		$arResult["HAS_OFFERS"] = !empty($arResult["SKU_OFFERS"]) ? "Y" : "N";
+		$arResult["MIN_PRICE"] = null;
+		$arResult["MAX_PRICE"] = null;
+		
+		if ($arResult["HAS_OFFERS"] == "Y") {
+			$productId = !empty($arResult["PARENT_PRODUCT"]["ID"]) ? $arResult["PARENT_PRODUCT"]["ID"] : $arResult["ID"];
+			$iblockId = !empty($arResult["PARENT_PRODUCT"]["IBLOCK_ID"]) ? $arResult["PARENT_PRODUCT"]["IBLOCK_ID"] : $arResult["IBLOCK_ID"];
+			
+			// Получаем MINIMUM_PRICE
+			$resMin = CIBlockElement::GetProperty($iblockId, $productId, [], ['CODE' => 'MINIMUM_PRICE']);
+			if ($propMin = $resMin->Fetch()) {
+				$arResult["MIN_PRICE"] = floatval($propMin['VALUE']);
+			}
+			
+			// Получаем MAXIMUM_PRICE
+			$resMax = CIBlockElement::GetProperty($iblockId, $productId, [], ['CODE' => 'MAXIMUM_PRICE']);
+			if ($propMax = $resMax->Fetch()) {
+				$arResult["MAX_PRICE"] = floatval($propMax['VALUE']);
+			}
+		}
 	}
 
 ?>

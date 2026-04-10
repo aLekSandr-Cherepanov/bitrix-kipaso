@@ -22,6 +22,7 @@ $this->addExternalJS($templateFolder . "/js/tabs.js");
 $this->addExternalJS($templateFolder . "/js/sku.js");
 $this->addExternalJS($templateFolder . "/js/product-modifications.js");
 $this->addExternalJS($templateFolder . "/js/modification-cart.js");
+$this->addExternalJS($templateFolder . "/js/scroll-to-offers.js");
 
 global $USER, $relatedFilter, $similarFilter, $servicesFilter;
 
@@ -145,6 +146,20 @@ if (!empty($arResult["EDIT_LINK"])) {
                 <div class="mainContainer" id="browse">
                     <div
                         class="secondCol col<? if (empty($arResult["PREVIEW_TEXT"]) && empty($arResult["SKU_OFFERS"]) && empty($arResult["PROPERTIES"])): ?> hide<? endif; ?>">
+                        <div class="product-icons-block">
+                            <div class="product-icon">
+                                <img class="product-icons-block-img" src="/local/templates/dresscodeV2/images/warranty.png" alt="Icon 1">
+                            </div>
+                            <div class="product-icon">
+                                <img class="product-icons-block-img" src="/local/templates/dresscodeV2/images/support.png" alt="Icon 2">
+                            </div>
+                            <div class="product-icon">
+                                <img class="product-icons-block-img" src="/local/templates/dresscodeV2/images/help-with-selection.png" alt="Icon 3">
+                            </div>
+                            <div class="product-icon">
+                                <img class="product-icons-block-img" src="/local/templates/dresscodeV2/images/consultation-on-compatibility.png" alt="Icon 4">
+                            </div>
+                        </div>
                         <div class="brandImageWrap brand-block">
                             <? if (!empty($arResult["BRAND"]["PICTURE"])): ?>
                                 <a href="<?= $arResult["BRAND"]["DETAIL_PAGE_URL"] ?>" class="brandImage brand-block__pict"><img
@@ -369,6 +384,15 @@ if (!empty($arResult["EDIT_LINK"])) {
                             "HIDE_ICONS" => "Y"
                         )
                     ); ?>
+                <? endif; ?>
+                <? if (!empty($arResult["PARENT_PRODUCT"]["PROPERTIES"]["PARENT_PRODUCT"]["~VALUE"]["TEXT"])): ?>
+                <div class="limiter">
+                    <div class="short-description-block">
+                        <div class="short-description-content">
+                            <?= $arResult["PARENT_PRODUCT"]["PROPERTIES"]["PARENT_PRODUCT"]["~VALUE"]["TEXT"] ?>
+                        </div>
+                    </div>
+                </div>
                 <? endif; ?>
                 <? if ($arParams["DISPLAY_OFFERS_TABLE"] == "Y" && !empty($arResult["SKU_OFFERS"])): ?>
                     <? if (
@@ -1190,9 +1214,20 @@ if (!empty($arResult["EDIT_LINK"])) {
         }
 
         if ($sku.length) {
-            // Переставляем строго после блока с отзывами
-            if (!$reviews.next().is($sku)) {
-            $reviews.after($sku);
+            // Ищем блок короткого описания
+            var $shortDesc = $('.short-description-block').first();
+            
+            if ($shortDesc.length) {
+                // Если есть блок короткого описания, размещаем таблицу после него
+                if (!$shortDesc.next().is($sku)) {
+                    $shortDesc.after($sku);
+                }
+            } else {
+                // Если блока короткого описания нет, размещаем после mainContainer
+                var $mainContainer = $('.mainContainer').first();
+                if ($mainContainer.length && !$mainContainer.next().is($sku)) {
+                    $mainContainer.after($sku);
+                }
             }
         }
         }
